@@ -482,57 +482,13 @@ from django.contrib import messages
 
 
 
-def auto_preprocess(request):
-    import pandas as pd
-    if request.method == 'POST':
-        try:
-            # 从会话中检索已上传的数据
-            uploaded_data = request.session.get('uploaded_data', [])
-            if not uploaded_data:
-                # 如果没有数据可供预处理，请提示用户上传文件
-                messages.error(request, "No data available for preprocessing. Please upload a file first.")
-                return redirect('upload_csv_or_xlsx')
-
-            # 将会话数据转换为DataFrame
-            df = pd.DataFrame(uploaded_data)
-
-            # 第1步：删除所有值均为NaN的行和列
-            df.dropna(how='all', inplace=True)
-            df.dropna(axis=1, how='all', inplace=True)
-
-            # 第2步：动态清理列名
-            df.columns = (
-                df.columns.str.strip()  # 去除列名首尾的空格
-                .str.replace(r'\W+', '_', regex=True)  # 使用下划线替换所有非字母数字字符
-                .str.lower()  # 将列名转换为小写
-            )
-
-            # 返回处理后的数据
-            return df
-        except Exception as e:
-            # 处理任何异常，向用户显示错误消息
-            messages.error(request, f"An error occurred during data preprocessing: {str(e)}")
-            return redirect('upload_csv_or_xlsx')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #auto_data process
 
+import pandas as pd
 
 #use
-
+'''
 def auto_preprocess(request):
     import pandas as pd
     from sklearn.preprocessing import LabelEncoder
@@ -607,9 +563,9 @@ def auto_preprocess(request):
             return redirect('upload_csv_or_xlsx')
 
     return render(request, 'main/data_management.html')
+'''
 
-
-'''def auto_preprocess(request):
+def auto_preprocess(request):
     import pandas as pd
     from sklearn.preprocessing import LabelEncoder, OneHotEncoder
     from sklearn.impute import SimpleImputer
@@ -690,7 +646,7 @@ def auto_preprocess(request):
             
 
 from sklearn.preprocessing import LabelEncoder
-'''
+
 
 
 
@@ -1319,181 +1275,8 @@ def save_to_neo4j(graph, headers):
             session.write_transaction(add_to_neo4j, edge[0], edge[1])
             
     driver.close()   
-    logger.info("All data saved to Neo4j successfully.")
-
-
-
-#charts
-
-
-import pandas as pd
-import plotly.express as px
-from plotly.io import to_html
-from django.shortcuts import render
-import numpy as np
-def upload_and_view_charts(request):
-    fig_html_list = []
-    if request.method == 'POST' and 'csv_file' in request.FILES:
-        csv_file = request.FILES['csv_file']
-        df = pd.read_csv(csv_file)
-
-
-        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-
-        # Chart 1: Video Play Count Over Time (Line Chart)
-        if 'timestamp' in df.columns and 'videoPlayCount' in df.columns:
-            fig_trend = px.line(
-                df.sort_values('timestamp'),
-                x='timestamp',
-                y='videoPlayCount',
-                title='Video Play Count Over Time',
-                labels={'timestamp': 'Time', 'videoPlayCount': 'Play Count'}
-            )
-            fig_html_list.append(to_html(fig_trend, full_html=False))
-
-        # Chart 2: Comparison of Video View Count and Play Count (Bar Chart)
-        if {'timestamp', 'videoViewCount', 'videoPlayCount'}.issubset(df.columns):
-            df['videoViewCount'].fillna(0, inplace=True)
-            df['videoPlayCount'].fillna(0, inplace=True)
-            df = df.sort_values('timestamp')
-
-            fig_compare = px.bar(
-                df,
-                x='timestamp',
-                y=['videoViewCount', 'videoPlayCount'],
-                title='Comparison of Video View Count and Play Count',
-                labels={'value': 'Count', 'timestamp': 'Time', 'variable': 'Metrics'},
-                barmode='group'
-            )
-            fig_html_list.append(to_html(fig_compare, full_html=False))
-
-        # Chart 3: Traffic Comparison by Time Period (Bar Chart)
-        if 'timestamp' in df.columns:
-            def categorize_time(hour):
-                if 6 <= hour < 12:
-                    return 'Morning (6:00-12:00)'
-                elif 12 <= hour < 18:
-                    return 'Afternoon (12:00-18:00)'
-                elif 18 <= hour < 24:
-                    return 'Evening (18:00-24:00)'
-                else:
-                    return 'Night (0:00-6:00)'
-
-            df['time_period'] = df['timestamp'].dt.hour.apply(categorize_time)
-
-            if 'videoViewCount' in df.columns and 'videoPlayCount' in df.columns:
-                time_period_data = df.groupby('time_period').agg(
-                    {'videoViewCount': 'mean', 'videoPlayCount': 'mean'}
-                ).reset_index()
-
-                fig_time_period = px.bar(
-                    time_period_data,
-                    x='time_period',
-                    y=['videoViewCount', 'videoPlayCount'],
-                    title='Video Traffic Comparison by Time Period',
-                    labels={'value': 'Average Count', 'time_period': 'Time Period', 'variable': 'Metric'},
-                    barmode='group'
-                )
-                fig_html_list.append(to_html(fig_time_period, full_html=False))
-
-        # Chart 4: Total Likes by Date (Horizontal Bar Chart)
-        if 'timestamp' in df.columns and 'likesCount' in df.columns:
-            df['date'] = df['timestamp'].dt.date  # 提取日期
-            likes_by_date = df.groupby('date')['likesCount'].sum().reset_index()  # 按日期汇总点赞数
-
-            fig_likes_bar = px.bar(
-                likes_by_date,
-                x='likesCount',
-                y='date',
-                orientation='h',
-                title='Total Likes by Date',
-                labels={'date': 'Date', 'likesCount': 'Total Likes'}
-            )
-            fig_html_list.append(to_html(fig_likes_bar, full_html=False))
-
-        # Chart 5: Relationship Between Likes and Comments (Scatter Plot)
-        if {'likesCount', 'commentsCount', 'videoPlayCount', 'videoViewCount'}.issubset(df.columns):
-            df['likesCount'].fillna(0, inplace=True)
-            df['commentsCount'].fillna(0, inplace=True)
-            df['videoPlayCount'].fillna(0, inplace=True)
-            df['videoViewCount'].fillna(0, inplace=True)
-
-            fig_scatter = px.scatter(
-                df,
-                x='likesCount',
-                y='commentsCount',
-                size='videoViewCount',
-                color='videoPlayCount',
-                title='Relationship Between Likes and Comments',
-                labels={
-                    'likesCount': 'Likes Count',
-                    'commentsCount': 'Comments Count',
-                    'videoPlayCount': 'Video Play Count',
-                    'videoViewCount': 'Video View Count (Size)'
-                },
-                hover_data=['timestamp', 'caption']
-            )
-            fig_html_list.append(to_html(fig_scatter, full_html=False))
-
-
-            # Chart 6: Video Duration vs View Count (Box Plot)
-            fig_box_duration_views = px.box(
-                df,
-                x='videoDuration',
-                y='videoViewCount',
-                title='Box Plot of Video Duration vs View Count',
-                labels={'videoDuration': 'Video Duration (seconds)', 'videoViewCount': 'View Count'},
-                points='all',
-                notched=True
-            )
-            fig_html_list.append(to_html(fig_box_duration_views, full_html=False))
-
-            # Chart 7: Play Duration and Play Count Heatmap
-            df['duration_bin'] = pd.cut(
-                df['videoDuration'],
-                bins=np.linspace(0, df['videoDuration'].max(), 10),
-                precision=0,
-                labels=[f"{int(b)}-{int(t)}" for b, t in zip(np.linspace(0, df['videoDuration'].max(), 10)[:-1], np.linspace(0, df['videoDuration'].max(), 10)[1:])]
-            )
-
-            df['play_count_bin'] = pd.cut(
-                df['videoPlayCount'],
-                bins=np.linspace(0, df['videoPlayCount'].max(), 10),
-                precision=0,
-                labels=[f"{int(b)}-{int(t)}" for b, t in zip(np.linspace(0, df['videoPlayCount'].max(), 10)[:-1], np.linspace(0, df['videoPlayCount'].max(), 10)[1:])]
-            )
-
-            heatmap_data = df.groupby(['duration_bin', 'play_count_bin']).size().reset_index(name='count')
-
-            fig_heatmap = px.density_heatmap(
-                heatmap_data,
-                x='duration_bin',
-                y='play_count_bin',
-                z='count',
-                title='Heatmap of Play Count vs Video Duration',
-                labels={'duration_bin': 'Video Duration (seconds)', 'play_count_bin': 'Play Count', 'count': 'Count'},
-                color_continuous_scale='Viridis'
-            )
-            fig_html_list.append(to_html(fig_heatmap, full_html=False))
-
-            # Chart 8: Video View Count vs Video Duration (Grouped Bar Chart)
-            fig_bar_duration_views = px.bar(
-                df,
-                x='timestamp',
-                y='videoViewCount',
-                color='videoDuration',
-                title='Bar Chart of View Count vs Video Duration',
-                labels={'timestamp': 'Video Timestamp', 'videoViewCount': 'View Count', 'videoDuration': 'Video Duration (seconds)'},
-                color_continuous_scale='Blues'
-            )
-            fig_html_list.append(to_html(fig_bar_duration_views, full_html=False))
-
-
-    return render(request, 'main/upload_and_view_charts.html', {'fig_html_list': fig_html_list})
-
-
-
-
+    logger.info("All data saved to Neo4j successfully.")  
+                                        
 #----------------------------GRAPH VISUALIZATION----------------------------
 
 
