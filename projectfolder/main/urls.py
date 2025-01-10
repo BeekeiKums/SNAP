@@ -6,12 +6,19 @@ urlpatterns = [
     
     path('admin_login/', views.admin_login, name='admin_login'),
     path('logout/', views.admin_logout, name='admin_logout'),
+    
     #dashboard
     path('dashboard/', views.dashboard, name='dashboard'),
     path('businessman_dashboard/', views.businessman_dashboard, name='businessman_dashboard'),
     path('content-creator-dashboard/', views.content_creator_dashboard, name='content_creator_dashboard'),
     path('data-analyst-dashboard/', views.data_analyst_dashboard, name='data_analyst_dashboard'),
     
+
+    path('testimonial_page/', views.testimonial_page, name='testimonial_page'),
+    path('create_businessman_profile/', views.create_businessman_account, name='create_profile'),
+    path('view_profile_businessman/', views.view_profile_content_creator, name='view_profile_businessman'),
+    
+   
     #create acc
     path('create_user_account/', views.create_user_account, name='create_user_account'),
     path('create_businessman_account/', views.create_businessman_account,  name='create_businessman_account'),
@@ -55,5 +62,25 @@ urlpatterns = [
     
     path('scrape/', views.scrape_profile, name='scrape_profile'),
     path('login/', views.login_instagram, name='login_instagram'),
+    
+    
+    #create profile
+    path('create_profile/', views.create_profile, name='create_profile'),
+    
+    
+    #profile
+    path('view_profile/', views.view_profile, name= 'view_profile'),
+    path('update_profile/<str:profile_id>/', views.update_profile, name='update_profile'),
+    
+    
+    #landing page
+    path('marketing_page/', views.marketing_page, name='marketing_page'),
+    path('testimonial_page/', views.testimonial_page, name='testimonial_page'),
+    path('login_rate/', views.login_rate, name='login_rate'),
+    
+    
+    #visibility control
+    path('visibility/', views.manage_visibility, name='manage_visibility'),
+    path('visibility/<int:data_item_id>/', views.update_visibility, name='update_visibility'),
     
 ]

@@ -9,13 +9,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from .models import Category
 from django.contrib import messages
-from .forms import UserAccountForm, CategoryForm, BusinessmanForm , ContentCreatorForm, DataAnalystForm , DataForm 
-from .models import UserAccount , ExtractData , Data , SocialMediaData
+from .forms import UserAccountForm, CategoryForm, BusinessmanForm , ContentCreatorForm, DataAnalystForm , ProfileForm , VisibilitySettingsForm
+from .models import UserAccount , Profile , DataItem , Testimonial
 from django.http import JsonResponse
 from django.conf import  settings
 from .models import Person, Movie
 from django.views.decorators.csrf import csrf_exempt
-
+from django.shortcuts import render
 import os
 import re
 import csv
@@ -38,6 +38,9 @@ def login_instagram(request):
             return JsonResponse({"success": True})
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
+    
+   
+       
 
 def load_session():
     """Load an existing session or log in manually."""
@@ -71,7 +74,7 @@ def scrape_profile(request):
             profile = instaloader.Profile.from_username(L.context, profile_username)
 
             # Define the path for saving the CSV file
-            csv_filename = f"C:/Users/Welcome/Downloads/graph/SNAP/scraped_CSVs/{profile_username}_recent_posts_with_hashtags.csv"
+            csv_filename = f"/Users/smithjonson/Documents/{profile_username}_recent_posts_with_hashtags.csv"
 
             # Data to keep track of all unique hashtags
             hashtag_columns = defaultdict(int)
@@ -93,7 +96,6 @@ def scrape_profile(request):
                     "Comments": post.comments,
                     "Caption": post.caption or "No caption",
                     "Date": post.date,
-                    
                 }
                 # Add hashtags as keys with binary values (1 if present, 0 otherwise)
                 for hashtag in hashtag_columns.keys():
@@ -114,7 +116,8 @@ def scrape_profile(request):
                     writer.writerow(post_data)
 
             # Return success with the generated file path
-            return JsonResponse({"success": True, "csv_path": csv_filename})
+            return JsonResponse({"success": True, "csv_path": csv_filename ,})
+            
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
 
@@ -149,6 +152,8 @@ def admin_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        
+        # Use Django's built-in authentication system
 
         try:
             user_account = UserAccount.objects.get(username=username)
@@ -156,6 +161,7 @@ def admin_login(request):
                 # Set session for login
                 request.session['username'] = user_account.username
                 request.session['role'] = user_account.role
+                request.session['is_authenticated'] = True
 
                 # Redirect to respective dashboards based on role
                 if user_account.role == 'admin':
@@ -174,6 +180,15 @@ def admin_login(request):
     return render(request, 'main/login.html')
 
 
+
+
+
+
+
+
+
+
+
         
 
 def admin_logout(request):
@@ -182,7 +197,7 @@ def admin_logout(request):
 
 
 def businessman_dashboard(request):
-    return render(request, 'main/businessman.html')
+   return render(request, 'main/businessman.html')
 
 
 def content_creator_dashboard(request):
@@ -241,12 +256,58 @@ def category_list(request):
     categories = Category.objects.all()  # Make sure this is fetching the categories correctly
     return render(request, 'main/category_list.html', {'categories': categories})
 
+import requests
+def get_timezone_from_ip(ip):
+    try: 
+        #using ip-api to get timezone
+        response = requests.get(f"http://ip-api.com/json/{ip}")
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("timezone", "Unknown")
+    
+    except Exception as e:
+        print(f"Error fetching timezone: {e}")
+    return "Unknown"        
+
+#create profile 
+def create_profile(request):
+    if request.method == 'POST':
+        form = ProfileForm(request.POST)
+        if form.is_valid():
+            #Save the form data to create a new profile instance
+            form.save()
+            #Redirect to a success page or another relevant page
+            return redirect('businessman_dashboard')
+    
+    else :
+        # Get user IP address
+        ip = "124.197.66.11"
+        timezone = get_timezone_from_ip(ip)
+        form = ProfileForm(initial={'timezone' : timezone})
+        
+        
+    # Render the template with the form
+    return render(request, 'main/create_profile.html', {'form' : form})        
+  
+  
+def get_client_ip(request):
+    """ Extract the client's IP from the request headers"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+        
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+        
+    return ip                
+            
 
 #create user account      
 def create_user_account(request):
     if request.method == 'POST':
         form = UserAccountForm(request.POST)
         if form.is_valid():
+            
             # Check for duplicate usernames or emails
             
             if UserAccount.objects.filter(username=form.cleaned_data['username']).exists():
@@ -255,9 +316,13 @@ def create_user_account(request):
                 messages.error(request, "Email already exists!")
             else:
                 # Save the user account
-                form.save()
+                
+                user_account = form.save(commit=False)  # Do not save to DB yet
+                user_account.role = 'admin'
+                user_account.save()
+                
                 messages.success(request, "User account created successfully!")
-                return redirect('create_user_account')  # Redirect to success page
+                return redirect('create_profile')  # Redirect to success page
 
         else:
             messages.error(request, "Failed to create account. Please check your input.")
@@ -324,7 +389,10 @@ def create_data_analyst_account(request):
         form = DataAnalystForm()
     return render(request, 'main/create_data_analyst_acc.html', {'form': form})                    
                            
-
+#view user profile
+def view_profile(request):
+    user_profile  = Profile.objects.all()
+    return render(request, 'main/myprofile.html', {'user_profile' : user_profile})
 #View to list all user accounts
 def view_user_accounts(request):
     users = UserAccount.objects.all()
@@ -356,14 +424,34 @@ def update_user_account(request, user_id):
     return JsonResponse({'status': 'fail'})
 
 
+
+def view_profile_content_creator(request):
+    return render(request, 'view_profile_content_creator.html')
+
+import json
+
+def update_profile(request, profile_id):
+    if request.method == 'POST':
+        profile = get_object_or_404(Profile, profile_id=profile_id)
+        data = json.loads(request.body) # Parse JSON data
+        profile.first_name = data.get('first_name' , profile.first_name)
+        profile.last_name = data.get('last_name' , profile.last_name)
+        profile.company = data.get('company' , profile.company)
+        profile.timezone = data.get('timezone' , profile.timezone)
+        
+        profile.save()
+        
+        return JsonResponse({'status': 'success'})
+
+    return JsonResponse({'status': 'fail'}, status=400)
+
+
 import os
 from dotenv import load_dotenv
 
 
 # Extract Data
             
-
-
 
 
 
@@ -466,6 +554,8 @@ def upload_csv_or_xlsx(request):
             request.session['uploaded_data'] = data
             messages.success(request, f"File {cleaned_file_name} uploaded successfully.")
             return redirect('auto_preprocess')
+            
+            
 
         except Exception as e:
             messages.error(request, f"Error processing the file: {str(e)}")
@@ -1309,8 +1399,85 @@ def download_csv(request):
 
 
 
+#-------------------------------------------------------
 
 
+
+
+def  marketing_page(request):
+    testimonials = Testimonial.objects.all().order_by("-created_at")
+    return render(request, 'main/marketing_page.html' , {'testimonials' : testimonials})
+'''
+if username:
+            user_account = UserAccount.objects.get(username=username)
+            Testimonial.objects.create(user=user_account, content=content, rating=rating)
+            return redirect('marketing_page')  # Redirect back to marketing page
+
+    return render(request, "main/testimonial_page.html")
+'''
+
+def testimonial_page(request):
+    if request.method == "POST":
+        rating = request.POST.get("rating")
+        content = request.POST.get("content")
+        username = request.session.get("username")
+        
+        if username:
+            user_account = UserAccount.objects.get(username=username)
+            Testimonial.objects.create(user=user_account, content=content, rating=rating)
+            return redirect('marketing_page')
+    
+    return render(request, 'main/testimonial_page.html')    
+        
+        
+
+def login_rate(request):
+    return render(request, 'main/rate_to_login.html')
+
+
+#-------------------------------------------------------
+
+'''
+def manage_visibility(request):
+    if not request.user.is_authenticated:
+        return redirect('admin_login')
+    
+    data_items = DataItem.objects.filter(businessman = request.user)
+    return render(request, 'main/manage_visibility.html' , {'data_items' : data_items})
+'''
+def manage_visibility(request):
+    is_authenticated = request.session.get('is_authenticated', False)
+
+    if not is_authenticated:
+        return redirect('admin_login')
+
+    username = request.session.get('username')
+    user_account = UserAccount.objects.get(username=username)
+
+    # Query DataItem using UserAccount
+    data_items = DataItem.objects.filter(businessman=user_account)
+    
+    print(f"User Account: {user_account}")
+    print(f"Data Items: {data_items}")
+
+    return render(request, 'main/manage_visibility.html', {'data_items': data_items})
+
+def update_visibility(request, data_item_id):
+    username = request.session.get('username')
+    user_account = UserAccount.objects.get(username=username)
+
+    data_item = get_object_or_404(DataItem, id=data_item_id, businessman=user_account)
+    
+    if request.method == 'POST':
+        form = VisibilitySettingsForm(request.POST, instance=data_item)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({'success': True, 'message': 'Visibility settings updated successfully.'})
+        else:
+            return JsonResponse({'success': False, 'message': 'Failed to update visibility settings. Please retry.'})
+    
+    form = VisibilitySettingsForm(instance=data_item)
+    return render(request, 'main/update_visibility.html', {'form': form, 'data_item': data_item})
 
 
 

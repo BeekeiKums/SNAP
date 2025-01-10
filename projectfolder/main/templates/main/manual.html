@@ -16,6 +16,54 @@
             justify-content: flex-start;
         }
 
+        /* Sidebar styling */
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            height : 100vh;
+            position : fixed;
+            left : 0;
+            top : 0;
+        }
+
+        .sidebar h2 {
+            font-size: 22px;
+            margin-bottom: 30px;
+            color: #1abc9c;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+            color: #fff;
+            padding: 10px 15px;
+            margin-bottom: 50px ;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar a:hover, .sidebar a.active {
+            background-color: #1abc9c;
+        }
+        
+
+        .sidebar .menu-items {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar .menu-item:last-child {
+            margin-top: auto; /* Pushes the logout link to the bottom */
+        }
+
+        
+
         h1 {
             font-size: 24px;
             color: #333;
@@ -104,6 +152,8 @@
             font-size: 16px;
             cursor: pointer;
             font-weight: bold;
+            
+            
         }
 
         button:hover {
@@ -126,6 +176,16 @@
 <body>
 
     <h1>Manual Data Processing</h1>
+
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a href="{% url 'view_profile' %}" class="menu-item">My Profile</a>
+        <a href="{% url 'upload_csv_or_xlsx' %}" class="menu-item">Upload File</a>
+        <a href="{% url 'download_csv' %}" class="menu-item">Download CSV</a>
+        <a href="{% url 'view_businessman_accounts' %}" class="menu-item">View User Accounts</a>
+        <a href="{% url 'create_businessman_account' %}" class="menu-item">Create Account</a>
+        <a href="{% url 'admin_logout' %}" class="menu-item">Logout</a>
+    </div>
 
     <!-- Pagination Controls -->
     <div class="pagination">

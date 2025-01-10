@@ -1,5 +1,6 @@
 from django import forms
-from .models import UserAccount, Category , Data
+from .models import UserAccount, Category , DataItem , Profile 
+from pytz import common_timezones
 
 class CategoryForm(forms.ModelForm):
     class Meta:
@@ -9,7 +10,7 @@ class CategoryForm(forms.ModelForm):
 class UserAccountForm(forms.ModelForm):
     class Meta:
         model = UserAccount
-        fields = ['username', 'email', 'password', 'role']
+        fields = ['username', 'email', 'password']
         widgets = {
             'password': forms.PasswordInput(attrs={'placeholder': 'Enter Password'}),
        }
@@ -39,11 +40,32 @@ class DataAnalystForm(UserAccountForm):
         fields = ['username', 'email', 'password']   
         widgets = {
             'password ': forms.PasswordInput(attrs={'placeholder': 'Enter Password'}),
-        }       
-
-            
- 
-class DataForm(forms.ModelForm):
+        }  
+        
+class ProfileForm(forms.ModelForm):
+    
     class Meta:
-        model = Data
-        fields = ['name', 'age', 'from_location', 'klout_score']  
+        model = Profile 
+        fields = ['first_name', 'last_name', 'company' , 'timezone']            
+        widgets = {
+            'timezone': forms.Select(choices=[(tz, tz) for tz in common_timezones], attrs={'class': 'form-control'}),
+        }
+    
+    
+
+
+class VisibilitySettingsForm(forms.ModelForm):
+    class Meta:
+        model = DataItem
+        fields = ['visibility']
+        widgets = {
+            'visibility' : forms.RadioSelect
+        }
+                    
+ 
+       
+   
+
+     
+        
+        

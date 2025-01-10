@@ -123,42 +123,76 @@ $(document).ready(function () {
 
 
 
-
     
+    // Add event listeners to the "Edit buttons"
 
-    document.getElementById('create-visualization').addEventListener('click', (e) => {
-        e.preventDefault();
-        const networkType = document.getElementById('network-type').value;
-        const layoutStyle = document.getElementById('layout-style').value;
+    document.querySelectorAll('.action-btn').forEach(button => {
+        button.addEventListener('click', function (event){
+            event.preventDefault();
 
+            const row = this.closest('tr'); // Get the current row
+            const cells = row.querySelectorAll('td');
+            const editButton = this;
 
-    //show a loading message
-    const messageArea =  document.getElementById('message-area');
-    messageArea.textContent = 'Generating visualization...';
+            // If button is in "Edit" mode
+            if (editButton.textContent === 'Edit') {
+                // Change button text to "Save"
+                editButton.textContent = 'Save';
 
-    //Send the request to the server
-    fetch('/create_visualization/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        },
-        body: JSON.stringify({
-            networkType: document.getElementById('network-type').value,
-            layoutStyle: document.getElementById('layout-style').value,
-        }),
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('visualization-placeholder').innerHTML = `<img src="${data.image}" alt="Network Visualization" style="max-width: 100%; height: auto;">`;
+                // Convert cells (excluding actions and ID) to editable fields
+                for (let i=1; i<= 4; i++) {
+                    const cell = cells[i];
+                    const value = cell.textContent.trim();
+                    cell.innerHTML = `<input type="text" value="${value}"/>`;
+                }
             } else {
-                alert(`Error: ${data.error}`);
+                // Save the updated data
+                const profileId = row.dataset.id;
+                const updatedData = {
+                    first_name : cells[1].querySelector('input').value,
+                    last_name : cells[2].querySelector('input').value,
+                    company : cells[3].querySelector('input').value,
+                    timezone : cells[4].querySelector('input').value,
+                };
+
+                // Send an AJAX request to update the data
+                fetch(`/update-profile/${profileId}/`, {
+                    method : 'POST',
+                    headers : {
+                        'Content-Type' : 'application/json',
+                        'X-CSRFToken' : '{{ csrf_token }}',
+                    },
+                    body : JSON.stringify(updatedData),
+                })
+
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Update the row with new data
+                        cells[1].textContent = updatedData.first_name;
+                        cells[2].textContent = updatedData.last_name;
+                        cells[3].textContent = updatedData.company;
+                        cells[4].textContent = updatedData.timezone;    
+
+                        // Change button text back to "Edit"
+                        editButton.textContent = 'Edit';
+                        alert('Profile updated successfully.');
+                    }
+                    else {
+                        alert('Failed to update profile. Please try again')
+                    }
+                })
+
+                .catch(error =>  {
+                    console.error('Error:', error);
+                    alert('An error occurred while saving the profile.')
+                })
+
+
             }
         })
-        .catch(error => {
-            alert(`Error: ${error.message}`);
-        });
-    
-})    
-    
+    })
+
+
+
+

@@ -23,21 +23,19 @@
         <label for="password" style="font-size: 14px; font-weight: bold;">Password</label>
         <input type="password" id="password" name="password" placeholder="Enter Password" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 5px;">
 
-        <label for="role" style="font-size: 14px; font-weight: bold;">Role</label>
-        <select id="role" name="role" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 5px;">
-            <option value="" disabled selected>Select Role</option>
-            <option value="admin">Admin</option>
-            <option value="businessman">Businessman</option>
-            <option value="content_creator">Content Creator</option>
-            <option value="data_analyst">Data Analyst</option>
-        </select>
+        
 
         <button type="submit" style="background-color: #636ae8; color: #ffffff; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
             Create Account
         </button>
     </form>
 
-    <a href="{% url 'view_user_accounts' %}" style="display: block; margin-top: 15px; text-align: center; text-decoration: none; color: #636ae8; font-size: 14px;">View User Accounts</a>
+    
+    
+    <a href="{% url 'admin_login' %}" style="display: block; margin-top: 15px; text-align: center; text-decoration: none; color: #636ae8; font-size: 14px;">Already have an Account? Login</a>
+    
+
+   
 
     {% if messages %}
         <div style="margin-top: 20px;">
@@ -47,6 +45,9 @@
         </div>
     {% endif %}
 </div>
+
+
+
 
 </body>
 </html>

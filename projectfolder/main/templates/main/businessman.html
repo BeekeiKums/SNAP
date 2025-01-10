@@ -7,116 +7,143 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f3f4f6;
             margin: 0;
             display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+            height: 100vh;
         }
 
-        .navbar {
-            background-color: #636ae8;
-            padding: 15px;
+        /* Sidebar styling */
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: #fff;
             display: flex;
+            flex-direction: column;
             justify-content: space-between;
-            align-items: center;
-            color: white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            height : 100vh;
+            position : fixed;
+            left : 0;
+            top : 0;
         }
 
-        .navbar h1 {
-            font-size: 20px;
-            margin: 0;
+        .sidebar h2 {
+            font-size: 22px;
+            margin-bottom: 30px;
+            color: #1abc9c;
         }
 
-        .navbar .nav-links {
-            display: flex;
-            gap: 20px;
-        }
-
-        .navbar .nav-links a {
+        .sidebar a {
             text-decoration: none;
-            color: white;
-            font-size: 14px;
+            color: #fff;
+            padding: 10px 15px;
+            margin-bottom: 50px ;
+            border-radius: 5px;
             font-weight: bold;
-            transition: color 0.3s ease;
+            transition: background-color 0.3s;
         }
 
-        .navbar .nav-links a:hover {
-            color: #ddd;
+        .sidebar a:hover, .sidebar a.active {
+            background-color: #1abc9c;
         }
 
-        .content {
+        .sidebar .menu-items {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
+        }
+        
+        .sidebar .menu-item:last-child {
+            margin-top: auto; /* Pushes the logout link to the bottom */
+        }
+
+        /* Main content styling */
+        .main-content {
             flex-grow: 1;
-            text-align: center;
+            background-color: #f9f9f9;
             padding: 20px;
+            overflow-y: auto;
         }
 
-        .content h2 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .button-grid {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
-        .button-grid a {
-            text-decoration: none;
-            background-color: #636ae8;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-
-        .button-grid a:hover {
-            background-color: #4b56e8;
-            transform: translateY(-3px);
+        .main-content .loading {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
         }
 
         footer {
-            background-color: #636ae8;
-            color: white;
             text-align: center;
+            background-color: #2c3e50;
+            color: #fff;
             padding: 10px;
-            font-size: 14px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
         }
     </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <!-- Navbar -->
-    <div class="navbar">
-        
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a href="{% url 'manage_visibility' %}">Visibility</a>
+        <a href="#" class="menu-item active" data-url="{% url 'view_profile' %}">My Profile</a>
+        <a href="#" class="menu-item" data-url="{% url 'upload_csv_or_xlsx' %}">Upload File</a>
+        <a href="#" class="menu-item" data-url="{% url 'download_csv' %}">Download CSV</a>
+        <a href="#" class="menu-item" data-url="{% url 'view_businessman_accounts' %}">View User Accounts</a>
+        <a href="#" class="menu-item" data-url="{% url 'create_businessman_account' %}">Create Account</a>
+        <a href="{% url 'admin_logout' %}" class="menu-item"  >Logout</a>
     </div>
 
-    <!-- Content Section -->
-    <div class="content">
-        <h2>Welcome to the SNAP Businessman Dashboard</h2>
-        <div class="button-grid">
-            <a href="{% url 'scrape_profile' %}">Scrape Online Data</a>
-            <a href="{% url 'upload_csv_or_xlsx' %}">Upload File</a>
-            <a href="{% url 'download_csv' %}">Download CSV</a>
-            <a href="{% url 'view_businessman_accounts' %}">View User Accounts</a>
-            <a href="{% url 'create_businessman_account' %}">Create Account</a>
-            <a href="{% url 'admin_logout' %}">Logout</a>
-        </div>
+    <!-- Main Content Area -->
+    <div class="main-content" id="main-content">
+        <div class="loading">Loading My Profile...</div>
     </div>
 
     <!-- Footer -->
     <footer>
         © 2024 Businessman Dashboard. All rights reserved.
     </footer>
+
+    <script>
+        $(document).ready(function () {
+            // Load default content (My Profile) when the page loads
+            loadContent("{% url 'view_profile' %}");
+
+            // Attach click event to menu items
+            $('.menu-item').on('click', function (e) {
+                e.preventDefault();
+
+                // Remove active class from all menu items
+                $('.menu-item').removeClass('active');
+
+                // Add active class to clicked menu item
+                $(this).addClass('active');
+
+                // Get URL from data attribute
+                const url = $(this).data('url');
+
+                // Load content dynamically
+                loadContent(url);
+            });
+
+            function loadContent(url) {
+                const contentArea = $('#main-content');
+                contentArea.html('<div class="loading">Loading...</div>');
+
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    success: function (data) {
+                        contentArea.html(data);
+                    },
+                    error: function (xhr, status, error) {
+                        contentArea.html('<div class="loading">Failed to load content. Please try again later.</div>');
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

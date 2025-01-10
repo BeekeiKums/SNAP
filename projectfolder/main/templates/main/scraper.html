@@ -80,20 +80,6 @@
             transition: background-color 0.3s ease;
         }
 
-        a {
-            width: 100%;
-            padding: 10px;
-            background-color: #636ae8;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: bold;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-
         button:hover {
             background-color: #4b56e8;
         }
@@ -137,10 +123,6 @@
             <button type="submit">Scrape Profile</button>
         </form>
 
-        <a href="{% url 'businessman_dashboard' %}" class="sidebar-menu-item">
-            <span>Return to Dashboard</span>
-        </a>
-
         <div id="result" style="margin-top: 20px;"></div>
     </div>
 
@@ -164,6 +146,7 @@
                 resultDiv.textContent = 'Login successful! You can now scrape profiles.';
                 scrapeForm.style.display = 'block';
                 loginForm.style.display = 'none';
+                window.location.href = result.redirect_url; 
             } else {
                 resultDiv.textContent = `Login failed: ${data.error}`;
             }

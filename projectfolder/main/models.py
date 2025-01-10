@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 import uuid
+from django.conf import settings
 from neomodel import StructuredNode, StringProperty, IntegerProperty, RelationshipTo
 
 class Person(StructuredNode):
@@ -29,6 +30,8 @@ class Category(models.Model):
 
 class UserAccount(models.Model):
     
+    
+    
     user_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)  # Explicitly map MongoDB _id
     username = models.CharField(max_length=100, unique=True)
     email = models.EmailField(unique=True)
@@ -39,7 +42,8 @@ class UserAccount(models.Model):
         ('content_creator', 'Content Creator'),
         ('data_analyst', 'Data Analyst'),
     ]
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='businessman')
+    
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='admin')
 
     def __str__(self):
         return f"{self.username} - {self.get_role_display()}"
@@ -98,15 +102,43 @@ class Data(models.Model):
         return self.name    
     
 
-class SocialMediaData(models.Model):
-    platform = models.CharField(max_length=50)
-    data = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+
+class Profile(models.Model):
+    profile_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    company = models.CharField(max_length=100)
+    timezone = models.CharField(max_length=100)
     
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
     
-    def __str__ (self):
-        return f"{self.platform} Data on {self.created_at}"
     
 
+class DataItem(models.Model):
+    VISIBILITY_CHOICES = [
+        ('private', 'Private'),
+        ('restricted', 'Restricted'),
+        ('public', 'Public'),
+    ]
+
+    businessman = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='private')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Testimonial(models.Model):
+    user = models.ForeignKey(UserAccount, on_delete= models.CASCADE)
+    content = models.TextField()
+    rating = models.PositiveIntegerField()  # 1 to 5 stars
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.user.username}'s Testimonial"
 
 

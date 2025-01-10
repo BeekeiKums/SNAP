@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testimonial Page</title>
+    <style>
+        body {
+            margin : 0;
+            font-family : Arial, sans-serif;
+            background-color : #f9f5e3;
+        }
+
+        header {
+            background-color: white;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #ccc;
+            position : sticky;
+            top : 0;
+            z-index : 1000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        header:hover {
+            background-color: #f7f7f7; /* Adds a hover effect for the entire header */
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        nav a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: black;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            text-decoration: none;
+            color: #6366f1;
+            
+        }
+
+        .review-section {
+            max-width : 800px;
+            margin : 50px auto;
+            text-align : center;
+            padding : 20px;
+            background-color : #fff;
+            border-radius : 10px;
+            box-shadow : 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .review-section h2 {
+            font-size : 28px;
+            font-weight : bold;
+            color : #333;
+            margin-bottom: 10px;
+        }
+
+        .review-section p {
+            font-size : 16px;
+            color : #666;
+            margin-bottom: 20px;
+        }
+
+        .stars {
+            display : flex;
+            justify-content: center;
+            gap : 10px;
+            margin-bottom : 20px;
+        }
+
+        .stars span {
+            font-size : 24px;
+            cursor : pointer;
+            color : #ccc;
+            transition : color 0.3s;
+        }
+
+        .stars span:hover,
+        .stars span.active {
+            color : #ffd700;
+    
+        }
+
+
+        textarea {
+            width : 100%;
+            padding : 10px;
+            border: 1px solid #ccc;
+            border-radius : 5px;
+            resize : none;
+            margin-bottom : 20px;
+        }
+
+
+        button {
+           padding : 10px 30px;
+           background-color : #007bff;
+           color : white;
+           border : none;
+           border-radius : 5px;
+           font-size : 16px;
+           cursor : pointer;
+           transition : background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color : #0056b3;
+        }
+
+        
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">Snap</div>
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#about-us">About Us</a>
+            <a href="#function">Functions</a>
+            <a href="#resources">Resources</a>
+            <a href="#testimonial">Testimonials</a>
+            <a href="{% url 'testimonial_page' %}">test</a>
+            <a href="{% url 'admin_login' %}">Sign In</a>
+        </nav>
+    </header>
+
+    <div class="review-section">
+        <h2>Submit a Review</h2>
+        <p>How would you rate our product</p>
+        <div class="stars">
+            <span class="star" data-value="1">&#9733;</span>
+            <span class="star" data-value="2">&#9733;</span>
+            <span class="star" data-value="3">&#9733;</span>
+            <span class="star" data-value="4">&#9733;</span>
+            <span class="star" data-value="5">&#9733;</span>
+        </div>
+        <textarea rows="5" placeholder="Write your review here..."></textarea>
+        <button>Submit</button>
+    </div>
+
+    <script>
+        const stars = document.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+            star.addEventListener('click', () => {
+                // Remove active class from all stars
+                stars.forEach(s => s.classList.remove('active'));
+                
+                // Add active class to clicked star and all previous stars
+                for (let i = 0; i <= index; i++) {
+                    stars[i].classList.add('active');
+                }
+            })
+        })
+    </script>
+    
+</body>
+</html>
