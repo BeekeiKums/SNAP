@@ -82,5 +82,7 @@ urlpatterns = [
     #visibility control
     path('visibility/', views.manage_visibility, name='manage_visibility'),
     path('visibility/<int:data_item_id>/', views.update_visibility, name='update_visibility'),
-    
+
+    # visual charts
+    path('upload_and_view_charts/', views.upload_and_view_charts, name='upload_and_view_charts')
 ]

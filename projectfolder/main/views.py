@@ -1365,8 +1365,425 @@ def save_to_neo4j(graph, headers):
             session.write_transaction(add_to_neo4j, edge[0], edge[1])
             
     driver.close()   
-    logger.info("All data saved to Neo4j successfully.")  
-                                        
+    logger.info("All data saved to Neo4j successfully.")
+
+#charts
+import plotly.express as px
+import pandas as pd
+from plotly.io import to_html
+from django.shortcuts import render
+
+def upload_and_view_charts(request):
+    fig_html_list = []
+    if request.method == 'POST' and 'csv_file' in request.FILES:
+        csv_file = request.FILES['csv_file']
+        platform = request.POST.get('platform', 'instagram')
+        try:
+
+            df = pd.read_csv(csv_file)
+
+            platform_handlers = {
+                'tiktok': handle_tiktok_data,
+                'linkedin': handle_linkedin_data,
+                'instagram': handle_instagram_data
+            }
+
+            handler = platform_handlers.get(platform)
+            if handler:
+                fig_html_list = handler(df)
+            else:
+                fig_html_list = [f"<div>Error: Unknown platform '{platform}'</div>"]
+        except Exception as e:
+            fig_html_list = [f"<div>Error processing the file: {str(e)}</div>"]
+
+    return render(request, 'main/upload_and_view_charts.html', {'fig_html_list': fig_html_list})
+
+# Instagram
+def handle_instagram_data(df):
+    fig_html_list = []
+
+    # Ensure followers_count is numeric for Chart 1
+    if 'followers_count' in df.columns:
+        # Convert to numeric and drop invalid entries
+        df['followers_count'] = pd.to_numeric(df['followers_count'], errors='coerce')
+        valid_followers_df = df.dropna(subset=['followers_count'])
+        fig1 = px.histogram(
+            valid_followers_df,
+            x='followers_count',
+            title='Distribution of Followers',
+            labels={'followers_count': 'Followers Count'},
+            nbins=20  # Adjust number of bins as needed
+        )
+        fig_html_list.append(fig1.to_html(full_html=False))
+
+    # Ensure likes_count and comments_count are numeric for Chart 2
+    if {'account_type', 'likes_count', 'comments_count'}.issubset(df.columns):
+        # Convert to numeric and drop invalid entries
+        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
+        df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
+
+        # Remove rows with NaN values in required columns
+        valid_interaction_df = df.dropna(subset=['account_type', 'likes_count', 'comments_count'])
+
+        # Group by account_type and calculate the mean
+        interaction_avg = (
+            valid_interaction_df
+            .groupby('account_type')
+            .mean(numeric_only=True)[['likes_count', 'comments_count']]  # Ensure only numeric columns are aggregated
+            .reset_index()
+        )
+
+        fig2 = px.bar(
+            interaction_avg,
+            x='account_type',
+            y=['likes_count', 'comments_count'],
+            title='Average Interaction by Account Type',
+            labels={'value': 'Average Count', 'account_type': 'Account Type', 'variable': 'Metric'},
+            barmode='group'  # Grouped bar chart
+        )
+        fig_html_list.append(fig2.to_html(full_html=False))
+
+    # Chart 3: Histogram
+    if 'engagement_rate' in df.columns:
+        fig3 = px.histogram(
+            df,
+            x='engagement_rate',
+            title='Post interaction rate distribution',
+            labels={'engagement_rate': 'engagement_rate'},
+            nbins=20
+        )
+        fig_html_list.append(fig3.to_html(full_html=False))
+
+    # Chart 4: User activity active time period (Heatmap)
+    if 'post_timestamp' in df.columns and 'likes_count' in df.columns:
+        df['hour'] = df['post_timestamp'].dt.hour
+        heatmap_data = df.groupby(['hour'])['likes_count'].sum().reset_index()
+        fig4 = px.density_heatmap(
+            heatmap_data,
+            x='hour',
+            y='likes_count',
+            title='User activity active time period',
+            labels={'hour': 'hour', 'likes_count': 'likes_count'}
+        )
+        fig_html_list.append(fig4.to_html(full_html=False))
+
+    # Chart 5: relationship likes_count and comments on a post (Scatter Plot)
+    if {'likes_count', 'comments_count'}.issubset(df.columns):
+        fig5 = px.scatter(
+            df,
+            x='likes_count',
+            y='comments_count',
+            title='relationship likes_count and comments on a post',
+            labels={'likes_count': 'likes_count', 'comments_count': 'comments_count'}
+        )
+        fig_html_list.append(fig5.to_html(full_html=False))
+    # Chart 6: Followers Distribution (Histogram)
+    if 'followers_count' in df.columns:
+        df['followers_count'] = pd.to_numeric(df['followers_count'], errors='coerce')  # Ensure numeric type
+        valid_followers_df = df.dropna(subset=['followers_count'])
+        fig1 = px.histogram(
+            valid_followers_df,
+            x='followers_count',
+            title='Distribution of Followers',
+            labels={'followers_count': 'Followers Count'},
+            nbins=20  # Adjust the number of bins as needed
+        )
+        fig_html_list.append(fig1.to_html(full_html=False))
+
+    # Chart 7: Average Interaction by Account Type (Grouped Bar Chart)
+    if {'account_type', 'likes_count', 'comments_count'}.issubset(df.columns):
+        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
+        df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
+        valid_interaction_df = df.dropna(subset=['account_type', 'likes_count', 'comments_count'])
+        interaction_avg = (
+            valid_interaction_df
+            .groupby('account_type')
+            .mean(numeric_only=True)[['likes_count', 'comments_count']]
+            .reset_index()
+        )
+        fig2 = px.bar(
+            interaction_avg,
+            x='account_type',
+            y=['likes_count', 'comments_count'],
+            title='Average Interaction by Account Type',
+            labels={'value': 'Average Count', 'account_type': 'Account Type', 'variable': 'Metric'},
+            barmode='group'
+        )
+        fig_html_list.append(fig2.to_html(full_html=False))
+
+    # Chart 8: Engagement Rate Distribution (Histogram)
+    if 'engagement_rate' in df.columns:
+        df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
+        valid_engagement_df = df.dropna(subset=['engagement_rate'])
+        fig3 = px.histogram(
+            valid_engagement_df,
+            x='engagement_rate',
+            title='Engagement Rate Distribution',
+            labels={'engagement_rate': 'Engagement Rate'},
+            nbins=20  # Adjust the number of bins as needed
+        )
+        fig_html_list.append(fig3.to_html(full_html=False))
+    # Chart 9: Ad Spend vs CTR (Scatter Plot)
+    if {'spend', 'ctr'}.issubset(df.columns):
+        # Ensure numeric type for spend and ctr
+        df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
+        df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
+
+        # Remove rows with NaN values in spend and ctr
+        valid_spend_ctr_df = df.dropna(subset=['spend', 'ctr'])
+
+        # Create scatter plot
+        fig1 = px.scatter(
+            valid_spend_ctr_df,
+            x='spend',
+            y='ctr',
+            title='Ad Spend vs CTR',
+            labels={'spend': 'Ad Spend', 'ctr': 'Click Through Rate (CTR)'},
+            size='spend',  # Optional: Bubble size proportional to spend
+            color='ctr'  # Optional: Color based on CTR
+        )
+        fig_html_list.append(fig1.to_html(full_html=False))
+
+    return fig_html_list
+
+def handle_tiktok_data(df):
+    fig_html_list = []
+
+    # Chart 1: Likes count over time (Line Chart)
+    if 'post_timestamp' in df.columns and 'likes_count' in df.columns:
+        # Ensure the timestamp and likes count columns are valid
+        df['post_timestamp'] = pd.to_datetime(df['post_timestamp'], errors='coerce')
+        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
+
+        # Remove NaN values from the timestamp and likes count columns
+        valid_likes_df = df.dropna(subset=['post_timestamp', 'likes_count'])
+
+        # Sort by timestamp and generate the line chart
+        fig_likes_trend = px.line(
+            valid_likes_df.sort_values('post_timestamp'),
+            x='post_timestamp',
+            y='likes_count',
+            title='Likes Count Over Time',
+            labels={'post_timestamp': 'Time', 'likes_count': 'Likes Count'}
+        )
+        fig_html_list.append(to_html(fig_likes_trend, full_html=False))
+
+    # Chart 2: Engagement rate distribution (Histogram)
+    if 'engagement_rate' in df.columns:
+        fig3 = px.histogram(
+            df,
+            x='engagement_rate',
+            title='Engagement Rate Distribution',
+            labels={'engagement_rate': 'Engagement Rate'},
+            nbins=20
+        )
+        fig_html_list.append(fig3.to_html(full_html=False))
+
+    # Chart 3: User activity by time period (Heatmap)
+    if 'post_timestamp' in df.columns and 'likes_count' in df.columns:
+        df['hour'] = df['post_timestamp'].dt.hour
+        heatmap_data = df.groupby(['hour'])['likes_count'].sum().reset_index()
+        fig4 = px.density_heatmap(
+            heatmap_data,
+            x='hour',
+            y='likes_count',
+            title='User Activity by Time Period',
+            labels={'hour': 'Hour', 'likes_count': 'Likes Count'}
+        )
+        fig_html_list.append(fig4.to_html(full_html=False))
+
+    # Chart 4: Relationship between likes and comments (Scatter Plot)
+    if {'likes_count', 'comments_count'}.issubset(df.columns):
+        fig5 = px.scatter(
+            df,
+            x='likes_count',
+            y='comments_count',
+            title='Relationship Between Likes and Comments',
+            labels={'likes_count': 'Likes Count', 'comments_count': 'Comments Count'}
+        )
+        fig_html_list.append(fig5.to_html(full_html=False))
+
+    # Chart 5: Followers distribution (Histogram)
+    if 'followers_count' in df.columns:
+        df['followers_count'] = pd.to_numeric(df['followers_count'], errors='coerce')  # Ensure numeric type
+        valid_followers_df = df.dropna(subset=['followers_count'])
+        fig1 = px.histogram(
+            valid_followers_df,
+            x='followers_count',
+            title='Distribution of Followers',
+            labels={'followers_count': 'Followers Count'},
+            nbins=20  # Adjust the number of bins as needed
+        )
+        fig_html_list.append(fig1.to_html(full_html=False))
+
+    # Chart 6: Average interaction by account type (Grouped Bar Chart)
+    if {'account_type', 'likes_count', 'comments_count'}.issubset(df.columns):
+        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
+        df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
+        valid_interaction_df = df.dropna(subset=['account_type', 'likes_count', 'comments_count'])
+        interaction_avg = (
+            valid_interaction_df
+            .groupby('account_type')
+            .mean(numeric_only=True)[['likes_count', 'comments_count']]
+            .reset_index()
+        )
+        fig2 = px.bar(
+            interaction_avg,
+            x='account_type',
+            y=['likes_count', 'comments_count'],
+            title='Average Interaction by Account Type',
+            labels={'value': 'Average Count', 'account_type': 'Account Type', 'variable': 'Metric'},
+            barmode='group'
+        )
+        fig_html_list.append(fig2.to_html(full_html=False))
+
+    # Chart 7: Engagement rate distribution (Histogram)
+    if 'engagement_rate' in df.columns:
+        df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
+        valid_engagement_df = df.dropna(subset=['engagement_rate'])
+        fig3 = px.histogram(
+            valid_engagement_df,
+            x='engagement_rate',
+            title='Engagement Rate Distribution',
+            labels={'engagement_rate': 'Engagement Rate'},
+            nbins=20  # Adjust the number of bins as needed
+        )
+        fig_html_list.append(fig3.to_html(full_html=False))
+
+    # Chart 8: Ad spend vs CTR (Scatter Plot)
+    if {'spend', 'ctr'}.issubset(df.columns):
+        # Ensure numeric type for spend and ctr
+        df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
+        df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
+
+        # Remove rows with NaN values in spend and ctr
+        valid_spend_ctr_df = df.dropna(subset=['spend', 'ctr'])
+
+        # Create scatter plot
+        fig1 = px.scatter(
+            valid_spend_ctr_df,
+            x='spend',
+            y='ctr',
+            title='Ad Spend vs CTR',
+            labels={'spend': 'Ad Spend', 'ctr': 'Click Through Rate (CTR)'},
+            size='spend',  # Optional: Bubble size proportional to spend
+            color='ctr'  # Optional: Color based on CTR
+        )
+        fig_html_list.append(fig1.to_html(full_html=False))
+
+    return fig_html_list
+
+# LinkedIn
+def handle_linkedin_data(df):
+    fig_html_list = []
+
+    # chart 1: Industry distribution (pie)
+    if 'industry' in df.columns:
+        try:
+
+            industry_counts = df['industry'].dropna().value_counts().reset_index()
+            industry_counts.columns = ['industry', 'count']
+
+            # pie
+            fig1 = px.pie(
+                industry_counts,
+                names='industry',
+                values='count',
+                title='Industry distribution',
+                labels={'industry': 'industry', 'count': 'count'}
+            )
+            fig_html_list.append(fig1.to_html(full_html=False))
+        except Exception as e:
+            fig_html_list.append(f"<div>mistake: {e}</div>")
+    else:
+        fig_html_list.append("<div>fail: data not find 'industry' column。</div>")
+
+    # Chart 2: Engagement Rate Distribution (Histogram)
+    if 'engagement_rate' in df.columns:
+        try:
+            df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
+            fig2 = px.histogram(
+                df,
+                x='engagement_rate',
+                title='Engagement Rate Distribution',
+                labels={'engagement_rate': 'Engagement Rate'},
+                nbins=20
+            )
+            fig_html_list.append(fig2.to_html(full_html=False))
+        except Exception as e:
+            fig_html_list.append(f"<div>mistake: {e}</div>")
+    else:
+        fig_html_list.append("<div>fail: data not find 'engagement_rate' column。</div>")
+    #chart3
+    if 'industry' in df.columns and 'likes_count' in df.columns:
+        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
+        likes_by_industry = df.groupby('industry')['likes_count'].sum().reset_index()
+        fig_likes_industry = px.bar(
+            likes_by_industry.sort_values('likes_count', ascending=False),
+            x='industry',
+            y='likes_count',
+            title='Likes Count by Industry',
+            labels={'industry': 'Industry', 'likes_count': 'Likes Count'}
+        )
+        fig_html_list.append(fig_likes_industry.to_html(full_html=False))
+
+    # Chart 4: Job Title Distribution (Bar Chart)
+    if 'job_title' in df.columns:
+        try:
+            job_counts = df['job_title'].dropna().value_counts().reset_index()
+            job_counts.columns = ['job_title', 'count']
+            fig4 = px.bar(
+                job_counts,
+                x='job_title',
+                y='count',
+                title='Job Title Distribution',
+                labels={'job_title': 'Job Title', 'count': 'Count'}
+            )
+            fig_html_list.append(fig4.to_html(full_html=False))
+        except Exception as e:
+            fig_html_list.append(f"<div>mistake: {e}</div>")
+    else:
+        fig_html_list.append("<div>fail: data not find 'job_title' column。</div>")
+
+    # Chart 5: Ad Spend vs CTR (Scatter Plot)
+    if 'spend' in df.columns and 'ctr' in df.columns:
+        try:
+            df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
+            df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
+            valid_df = df.dropna(subset=['spend', 'ctr'])
+            fig5 = px.scatter(
+                valid_df,
+                x='spend',
+                y='ctr',
+                title='Ad Spend vs CTR',
+                labels={'spend': 'Ad Spend', 'ctr': 'CTR (Click-Through Rate)'},
+                size='spend',  # Bubble size by ad spend
+                color='ctr'  # Color by CTR
+            )
+            fig_html_list.append(fig5.to_html(full_html=False))
+        except Exception as e:
+            fig_html_list.append(f"<div>mistake: {e}</div>")
+    else:
+        fig_html_list.append("<div>fail: data not find 'spend' or 'ctr' column。</div>")
+
+    #chart 6
+    if 'industry' in df.columns and 'comments_count' in df.columns:
+        # Ensure the industry and comments count columns are valid
+        df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
+
+        # Group by industry and calculate total comments
+        comments_by_industry = df.groupby('industry')['comments_count'].sum().reset_index()
+
+        # Sort by comments count and generate the bar chart
+        fig_comments_industry = px.bar(
+            comments_by_industry.sort_values('comments_count', ascending=False),
+            x='industry',
+            y='comments_count',
+            title='Comment Count by Industry',
+            labels={'industry': 'Industry', 'comments_count': 'Comment Count'}
+        )
+        fig_html_list.append(fig_comments_industry.to_html(full_html=False))
+    return fig_html_list
 #----------------------------GRAPH VISUALIZATION----------------------------
 
 
