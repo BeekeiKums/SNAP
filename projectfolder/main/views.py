@@ -12,7 +12,7 @@ from django.contrib import messages
 from .forms import UserAccountForm, CategoryForm, BusinessmanForm , ContentCreatorForm, DataAnalystForm , ProfileForm , VisibilitySettingsForm
 from .models import UserAccount , Profile , DataItem , Testimonial
 from django.http import JsonResponse
-from django.conf import  settings
+from django.conf import settings
 from .models import Person, Movie
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
@@ -24,6 +24,8 @@ import instaloader
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
+
+
 
 # Initialize Instaloader
 L = instaloader.Instaloader()
@@ -66,60 +68,105 @@ def extract_hashtags(caption):
         return []
     return re.findall(r"#(\w+)", caption)
 
+from django.conf import settings
+from django.http import JsonResponse
+from django.shortcuts import render
+from instaloader import Instaloader, Profile
+import os
+import csv
+from collections import defaultdict
+import time
+
+# Initialize Instaloader
+L = Instaloader()
 
 def scrape_profile(request):
     if request.method == "POST":
         profile_username = request.POST.get("profile_username")
+        num_posts = int(request.POST.get("num_posts", 10))  # Default to 10 posts if no input is given
+
+        if not profile_username:
+            return JsonResponse({"success": False, "error": "Profile username is required."})
+
         try:
+            # Authenticate if necessary
+            if not L.context.is_logged_in:
+                L.login("your_instagram_username", "your_password")
+
+            # Load profile using Instaloader
             profile = instaloader.Profile.from_username(L.context, profile_username)
 
-            # Define the path for saving the CSV file
-            csv_filename = f"/Users/smithjonson/Documents/{profile_username}_recent_posts_with_hashtags.csv"
-
-            # Data to keep track of all unique hashtags
-            hashtag_columns = defaultdict(int)
+            # Define a dynamic path for saving the CSV file
+            csv_folder = os.path.join(settings.MEDIA_ROOT, "downloads")
+            os.makedirs(csv_folder, exist_ok=True)  # Create the downloads folder if it doesn't exist
+            csv_filename = os.path.join(csv_folder, f"{profile_username}_posts.csv")
 
             # Collect post data
             posts_data = []
             for i, post in enumerate(profile.get_posts()):
-                if i >= 10:  # Limit to the first 10 posts
+                if i >= num_posts: 
                     break
 
-                hashtags = extract_hashtags(post.caption)
-                for hashtag in hashtags:
-                    hashtag_columns[hashtag] = 1  # Mark the hashtag as a column
+                try:
+                    # Extract specific attributes, location cannot be extracted unfortunately
+                    post_details = {
+                        "owner_username": post.owner_username,
+                        "is_verified": "YES" if profile.is_verified else "NO",
+                        "followers": profile.followers,
+                        "shortcode": post.shortcode,
+                        "timestamp": post.date_utc.strftime("%Y-%m-%d %H:%M:%S"),
+                        "title": post.title,                       
+                        "caption": post.caption,
+                        "likes": post.likes,
+                        "comments": post.comments,
+                        "hashtags": post.caption_hashtags,  # List of hashtags
+                        "is_video": post.is_video,
+                        "video_url": post.video_url if post.is_video else None,
+                        "video_duration": post.video_duration,
+                        "image_url": post.url if not post.is_video else None,
+                        "is_sponsored": post.is_sponsored,
+                        
+                        
+                        
+                    }
 
-                post_details = {
-                    "Post URL": f"https://www.instagram.com/p/{post.shortcode}/",
-                    "Image URL": post.url,
-                    "Likes": post.likes,
-                    "Comments": post.comments,
-                    "Caption": post.caption or "No caption",
-                    "Date": post.date,
-                }
-                # Add hashtags as keys with binary values (1 if present, 0 otherwise)
-                for hashtag in hashtag_columns.keys():
-                    post_details[f"#{hashtag}"] = 1 if hashtag in hashtags else 0
+                    posts_data.append(post_details)
+                except Exception as e:
+                    return JsonResponse({"success": False, "error": f"Error processing post: {str(e)}"})
 
-                posts_data.append(post_details)
+            # Prepare fieldnames for the selected attributes
+            fieldnames = [
+                "owner_username",
+                "is_verified",
+                "followers",
+                "shortcode",
+                "timestamp",
+                "title",
+                "caption",
+                "likes",
+                "comments",
+                "hashtags",
+                "is_video",
+                "video_url",
+                "video_duration",
+                "image_url",
+                "is_sponsored"
+            ]
 
-            # Prepare final fieldnames for CSV (dynamic hashtags as columns)
-            base_fields = ["Post URL", "Image URL", "Likes", "Comments", "Caption", "Date"]
-            hashtag_fields = [f"#{hashtag}" for hashtag in hashtag_columns.keys()]
-            fieldnames = base_fields + hashtag_fields
 
             # Write to CSV
             with open(csv_filename, mode="w", newline="", encoding="utf-8") as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
-                for post_data in posts_data:
-                    writer.writerow(post_data)
+                writer.writerows(posts_data)
 
-            # Return success with the generated file path
-            return JsonResponse({"success": True, "csv_path": csv_filename ,})
-            
+            # Return success response with file URL
+            file_url = os.path.join(settings.MEDIA_URL, "downloads", f"{profile_username}_posts.csv")
+            return JsonResponse({"success": True, "csv_path": file_url})
+
         except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)})
+            # Log and return the specific error
+            return JsonResponse({"success": False, "error": f"Error scraping profile: {str(e)}"})
 
     return render(request, "main/scraper.html")
 
@@ -1570,12 +1617,14 @@ def handle_tiktok_data(df):
 
     # Chart 2: Engagement rate distribution (Histogram)
     if 'engagement_rate' in df.columns:
+        df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
+        valid_engagement_df = df.dropna(subset=['engagement_rate'])
         fig3 = px.histogram(
-            df,
+            valid_engagement_df,
             x='engagement_rate',
             title='Engagement Rate Distribution',
             labels={'engagement_rate': 'Engagement Rate'},
-            nbins=20
+            nbins=20  # Adjust the number of bins as needed
         )
         fig_html_list.append(fig3.to_html(full_html=False))
 
@@ -1637,18 +1686,6 @@ def handle_tiktok_data(df):
         )
         fig_html_list.append(fig2.to_html(full_html=False))
 
-    # Chart 7: Engagement rate distribution (Histogram)
-    if 'engagement_rate' in df.columns:
-        df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
-        valid_engagement_df = df.dropna(subset=['engagement_rate'])
-        fig3 = px.histogram(
-            valid_engagement_df,
-            x='engagement_rate',
-            title='Engagement Rate Distribution',
-            labels={'engagement_rate': 'Engagement Rate'},
-            nbins=20  # Adjust the number of bins as needed
-        )
-        fig_html_list.append(fig3.to_html(full_html=False))
 
     # Chart 8: Ad spend vs CTR (Scatter Plot)
     if {'spend', 'ctr'}.issubset(df.columns):
