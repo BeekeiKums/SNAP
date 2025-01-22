@@ -3,14 +3,6 @@ from django.contrib.auth.models import User
 import uuid
 from django.conf import settings
 from neomodel import StructuredNode, StringProperty, IntegerProperty, RelationshipTo
-from djongo import models
-from bson import ObjectId
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-import logging
-import traceback
-
-logger = logging.getLogger(__name__)
 
 class Person(StructuredNode):
     name = StringProperty(unique_index=True, required=True)
@@ -29,61 +21,39 @@ class Category(models.Model):
     type = models.CharField(max_length=50, choices=[
         ('content_creator', 'Content Creator'),
         ('business', 'Business'),
-        ('analyst', 'Analyst'),
-        ('admin', 'Admin')  # Add 'admin' to choices
-    ], default='admin')  # Set default value to 'admin'
+        ('analyst', 'Analyst')
+    ])
 
     def __str__(self):
         return f"{self.name}"
 
 class UserAccount(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
-    username = models.CharField(max_length=150, unique=True)  # Add username field
-    role = models.CharField(max_length=255)
-    email = models.EmailField()
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    ROLE_CHOICES = [
+        ('admin', 'Admin'),
+        ('businessman', 'Businessman'),
+        ('content_creator', 'Content Creator'),
+        ('data_analyst', 'Data Analyst'),
+    ]
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='admin')
 
     def __str__(self):
-        return f"{self.user.username} - {self.role}"
-
-@receiver(post_save, sender=User)
-def create_user_account(sender, instance, created, **kwargs):
-    if created:
-        try:
-            if not UserAccount.objects.filter(user=instance).exists():
-                UserAccount.objects.create(user=instance, username=instance.username)
-                logger.info(f"UserAccount created for user: {instance.username}")
-            else:
-                logger.warning(f"UserAccount already exists for user: {instance.username}")
-        except Exception as e:
-            logger.error(f"Error creating UserAccount for user: {instance.username} - {e}")
-            logger.error(traceback.format_exc())
-
-@receiver(post_save, sender=User)
-def save_user_account(sender, instance, **kwargs):
-    try:
-        if hasattr(instance, 'useraccount'):
-            instance.useraccount.save()
-            logger.info(f"UserAccount saved for user: {instance.username}")
-        else:
-            logger.warning(f"UserAccount does not exist for user: {instance.username}")
-    except Exception as e:
-        logger.error(f"Error saving UserAccount for user: {instance.username} - {e}")
-        logger.error(traceback.format_exc())
+        return f"{self.user.username} - {self.get_role_display()}"
 
 class Businessman(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.user.username}"
 
 class ContentCreator(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.user.username}"
 
 class DataAnalyst(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.user.username}"

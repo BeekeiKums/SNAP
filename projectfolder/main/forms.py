@@ -10,7 +10,6 @@ class CategoryForm(forms.ModelForm):
 
 class UserAccountForm(forms.ModelForm):
     ROLE_CHOICES = [
-        ('admin', 'Admin'),
         ('businessman', 'Businessman'),
         ('data_analyst', 'Data Analyst'),
         ('content_creator', 'Content Creator'),
@@ -50,11 +49,9 @@ class VisibilitySettingsForm(forms.ModelForm):
         }
 
 class UserCreationForm(BaseUserCreationForm):
-    email = forms.EmailField(required=True)
-
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2')
+        fields = ('username', 'password1', 'password2', 'email')
 
 
 

@@ -15,6 +15,11 @@ from neomodel import config
 
 import os
 
+
+
+
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
@@ -26,6 +31,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -33,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',  # Ensure this is included
+    'django.contrib.messages',
     'django.contrib.staticfiles',
     'main',
 ]
@@ -47,9 +55,20 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',  # Ensure this is included
+    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
+    
 ]
+
+'''
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+
+
+'''
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,11 +100,22 @@ TEMPLATES = [
 ]
 
 
+
+
 WSGI_APPLICATION = 'myproject.wsgi.application'
 
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
+
+
+APIFY_API_TOKEN = "apify_api_RD5dC9E6UUmLh7zsNb7p0xmCEKBvHP1NnBZP"
+
+
+
+config.DATABASE_URL = 'bolt://neo4j:bin754826@localhost:7687'
+
+           # password = bin754826
 
 DATABASES = {
     'default': {
@@ -108,14 +138,15 @@ DATABASES = {
     }
 }
 
-# Neo4j configuration
-config.DATABASE_URL = 'bolt://neo4j:bin754826@localhost:7687'
-
-# Apify API token
-APIFY_API_TOKEN = "apify_api_RD5dC9E6UUmLh7zsNb7p0xmCEKBvHP1NnBZP"
-#password = bin754826
 # Maximum size for file uploads (e.g., 100MB)
+
+
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 100000
+
+
+
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -134,6 +165,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
@@ -162,5 +194,5 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_URL = '/login/'  # Replace with the actual path to your login page
+LOGIN_URL = '/admin_login/'  # Replace with the actual path to your login page
 

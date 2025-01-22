@@ -24,8 +24,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from neo4j import GraphDatabase
 from django.contrib.auth.hashers import make_password
-import requests
-from django.contrib.auth.models import User
+import requests  # Add this import
+from django.contrib.auth.models import User  # Add this import
 
 from .forms import (UserAccountForm, CategoryForm, BusinessmanForm, ContentCreatorForm, DataAnalystForm, ProfileForm, VisibilitySettingsForm, UserCreationForm)
 from .models import Category, UserAccount, Profile, DataItem, Testimonial, Person, Movie
@@ -167,10 +167,7 @@ def login(request):
         try:
             user = User.objects.get(username=username)
             try:
-                user_account = UserAccount.objects.filter(user=user).first()
-                if not user_account:
-                    messages.error(request, "User account does not exist!")
-                    return redirect('login')
+                user_account = UserAccount.objects.get(user=user)
             except UserAccount.DoesNotExist:
                 messages.error(request, "User account does not exist!")
                 return redirect('login')
@@ -194,10 +191,6 @@ def login(request):
                     return redirect('content_creator_dashboard')
                 elif user_account.role == 'data_analyst':
                     return redirect('data_analyst_dashboard')
-                else:
-                    messages.error(request, "Invalid role!")
-                    print("Invalid role!")
-                    return redirect('login')
             else:
                 messages.error(request, "Invalid credentials!")
                 print("Invalid credentials!")
@@ -277,6 +270,7 @@ def get_timezone_from_ip(ip):
         print(f"Error fetching timezone: {e}")
     return "Unknown"
 
+
 def create_profile(request):
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES)
@@ -291,6 +285,7 @@ def create_profile(request):
         
     # Render the template with the form
     return render(request, 'main/create_profile.html', {'form': form})
+
 
 def get_client_ip(request):
     """ Extract the client's IP from the request headers"""
@@ -307,38 +302,43 @@ def create_user_account(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password1')
-            email = form.cleaned_data.get('email')
+            user = form.save()
             role = request.POST.get('role')
-            try:
-                user = User.objects.create_user(username=username, password=password, email=email)
-                UserAccount.objects.create(user=user, username=username, role=role, email=email)
-                messages.success(request, 'Account created successfully.')
-                return redirect('login')
-            except Exception as e:
-                messages.error(request, f'Error creating account: {e}')
-        else:
-            messages.error(request, 'Invalid form submission.')
+            user_account = UserAccount.objects.create(
+                user=user,
+                role=role
+            )
+            user_account.save()
+            # Automatically log in the user after account creation
+            auth_login(request, user)
+            messages.success(request, 'Account created successfully! Please create your profile.')
+            # Redirect to the admin dashboard if the user is an admin
+            if user.is_staff:
+                return redirect('dashboard')
+            return redirect('create_profile')
     else:
         form = UserCreationForm()
     return render(request, 'main/create_user_account.html', {'form': form})
+
+# ...existing code...
 
 def create_businessman_account(request):
     if request.method == 'POST':
         form = BusinessmanForm(request.POST)
         if form.is_valid():
+            # Check for duplicate usernames or emails
             if UserAccount.objects.filter(username=form.cleaned_data['username']).exists():
                 messages.error(request, "Username already exists!")
             elif UserAccount.objects.filter(email=form.cleaned_data['email']).exists():
                 messages.error(request, "Email already exists!")
             else:
-                user_account = form.save(commit=False)
-                user_account.role = 'businessman'
-                user_account.password = make_password(form.cleaned_data['password'])
-                user_account.save()
+                # Save the user account and set role to 'businessman'
+                user_account = form.save(commit=False)  # Do not save to DB yet
+                user_account.role = 'businessman'       # Assign role in backend
+                user_account.password = make_password(form.cleaned_data['password'])  # Ensure password is hashed
+                user_account.save()                    # Save to DB
                 messages.success(request, "Businessman account created successfully!")
-                return redirect('create_businessman_account')
+                return redirect('create_businessman_account')  # Redirect back to the form
     else:
         form = BusinessmanForm()
     return render(request, 'main/create_businessman_acc.html', {'form': form})
@@ -351,11 +351,12 @@ def create_content_creator_account(request):
                 messages.error(request, "Username already exists!")
             elif UserAccount.objects.filter(email=form.cleaned_data['email']).exists():
                 messages.error(request, "Email already exists!")
-            else:
+            else: 
                 user_account = form.save(commit=False)
                 user_account.role = 'content_creator'
-                user_account.password = make_password(form.cleaned_data['password'])
+                user_account.password = make_password(form.cleaned_data['password'])  # Ensure password is hashed
                 user_account.save()
+                
                 messages.success(request, "Content creator account created successfully!")
                 return redirect('create_content_creator_account')
     else:
@@ -373,15 +374,13 @@ def create_data_analyst_account(request):
             else:
                 user_account = form.save(commit=False)
                 user_account.role = 'data_analyst'
-                user_account.password = make_password(form.cleaned_data['password'])
+                user_account.password = make_password(form.cleaned_data['password'])  # Ensure password is hashed
                 user_account.save()
                 messages.success(request, "Data analyst account created successfully!")
                 return redirect('create_data_analyst_account')
     else:
         form = DataAnalystForm()
     return render(request, 'main/create_data_analyst_acc.html', {'form': form})
-
-# ...existing code...
 
 # View user profile
 def view_profile(request):
@@ -1169,13 +1168,12 @@ def testimonial_page(request):
         username = request.session.get("username")
         
         if username:
-            user_account = UserAccount.objects.get(user__username=username)
+            user_account = UserAccount.objects.get(username=username)
             Testimonial.objects.create(user=user_account, content=content, rating=rating)
-            messages.success(request, "Testimonial submitted successfully!")
             return redirect('marketing_page')
     
-    return render(request, 'main/testimonial.html')
-
+    return render(request, 'main/testimonial_page.html')    
+        
 def login_rate(request):
     return render(request, 'main/rate_to_login.html')
 

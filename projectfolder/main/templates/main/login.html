@@ -210,7 +210,7 @@
     <div class="login-container">
         <div class="login-box">
             <h2>Welcome back 👋</h2>
-            <form method="POST" action="{% url 'login' %}"> <!-- Ensure this URL is correct -->
+            <form method="POST">
                 {% csrf_token %}
                 <!-- Username -->
                 <div class="textbox">
@@ -247,7 +247,7 @@
                     <button type="button" class="social-button apple">A</button>
                 </div>
                 <!-- Register Link -->
-                <p class="register-link">Not a member yet? <a href="{% url 'create_user_account' %}">Register now</a></p> <!-- Ensure this URL is correct -->
+                <p class="register-link">Not a member yet? <a href="{% url 'create_user_account' %}">Register now</a></p>
             </form>
             {% if messages %}
                 <div class="messages">
