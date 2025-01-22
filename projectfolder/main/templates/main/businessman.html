@@ -22,10 +22,10 @@
             justify-content: space-between;
             padding: 20px;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            height : 100vh;
-            position : fixed;
-            left : 0;
-            top : 0;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
         }
 
         .sidebar h2 {
@@ -38,7 +38,7 @@
             text-decoration: none;
             color: #fff;
             padding: 10px 15px;
-            margin-bottom: 50px ;
+            margin-bottom: 10px;
             border-radius: 5px;
             font-weight: bold;
             transition: background-color 0.3s;
@@ -62,6 +62,7 @@
             flex-grow: 1;
             background-color: #f9f9f9;
             padding: 20px;
+            margin-left: 250px; /* Adjust based on sidebar width */
             overflow-y: auto;
         }
 
@@ -79,6 +80,7 @@
             position: fixed;
             bottom: 0;
             width: 100%;
+            margin-left: 250px; /* Adjust based on sidebar width */
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -93,12 +95,15 @@
         <a href="#" class="menu-item" data-url="{% url 'download_csv' %}">Download CSV</a>
         <a href="#" class="menu-item" data-url="{% url 'view_businessman_accounts' %}">View User Accounts</a>
         <a href="#" class="menu-item" data-url="{% url 'create_businessman_account' %}">Create Account</a>
-        <a href="{% url 'admin_logout' %}" class="menu-item"  >Logout</a>
+        <a href="{% url 'scrape_profile' %}" class="menu-item">Scrape Profile</a>
+        <a href="{% url 'testimonial_page' %}" class="menu-item">Submit Testimonial</a>
+        <a href="{% url 'logout' %}" class="menu-item" id="logout-link">Logout</a>
     </div>
 
     <!-- Main Content Area -->
     <div class="main-content" id="main-content">
-        <div class="loading">Loading My Profile...</div>
+        <h1>Welcome to the Businessman Dashboard</h1>
+        <!-- Add your dashboard content here -->
     </div>
 
     <!-- Footer -->
@@ -108,6 +113,8 @@
 
     <script>
         $(document).ready(function () {
+            let isLoading = false;  // Add a flag to prevent multiple requests
+
             // Load default content (My Profile) when the page loads
             loadContent("{% url 'view_profile' %}");
 
@@ -125,10 +132,17 @@
                 const url = $(this).data('url');
 
                 // Load content dynamically
-                loadContent(url);
+                if (url) {
+                    loadContent(url);
+                } else {
+                    window.location.href = $(this).attr('href');  // Handle logout link
+                }
             });
 
             function loadContent(url) {
+                if (isLoading) return;  // Prevent multiple requests
+                isLoading = true;
+
                 const contentArea = $('#main-content');
                 contentArea.html('<div class="loading">Loading...</div>');
 
@@ -137,9 +151,11 @@
                     method: 'GET',
                     success: function (data) {
                         contentArea.html(data);
+                        isLoading = false;  // Reset the flag
                     },
                     error: function (xhr, status, error) {
                         contentArea.html('<div class="loading">Failed to load content. Please try again later.</div>');
+                        isLoading = false;  // Reset the flag
                     }
                 });
             }
