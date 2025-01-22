@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,295 +15,228 @@
     <script src="{% static 'index.js' %}"></script>
 </head>
 <body>
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .main-container {
-            display: flex;
-            flex: 1;
-            height: 100%;
-        }
-        
-        /* Sidebar Menu */
+
+   
+
+<style>
+    body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background-color: #f8f9fa;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .main-container {
+        display: flex;
+        flex: 1;
+        height: 100%;
+    }
+    
+    /* Sidebar Menu */
+    .sidebar-menu {
+        width: 250px;
+        background: #ffffff;
+        padding: 20px;
+        border-right: 1px solid #e4e7ec;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: 100vh; /* Ensures the sidebar takes up the full height */
+        overflow-y: auto; /* Add scroll for longer content */
+    }
+    
+    /* Content Container */
+    .content-container {
+        flex: 1;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        background-color: #f9f9f9;
+        overflow-y: auto; /* Ensures scroll for long content */
+    }
+    
+    /* Table Styling */
+    .category-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 20px;
+    }
+    
+    .category-table th,
+    .category-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #e4e7ec;
+    }
+    
+    .category-table th {
+        background-color: #f9fafb;
+        font-size: 14px;
+        font-weight: bold;
+        color: #1d2939;
+    }
+    
+    .category-table td {
+        font-size: 14px;
+        color: #565d6d;
+    }
+    
+    .category-table tr:hover {
+        background: #f1f1f1;
+    }
+    
+    /* Header and Action Bar */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .action-bar {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+    
+    .action-bar .button {
+        background-color: #636ae8;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    
+    .action-bar .button:hover {
+        background-color: #4b56e8;
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
         .sidebar-menu {
-            width: 250px;
-            background: #ffffff;
-            padding: 20px;
-            border-right: 1px solid #e4e7ec;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            height: 100vh; /* Ensures the sidebar takes up the full height */
-            overflow-y: auto; /* Add scroll for longer content */
-        }
-        
-        /* Content Container */
-        .content-container {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            background-color: #f9f9f9;
-            overflow-y: auto; /* Ensures scroll for long content */
-        }
-        
-        /* Table Styling */
-        .category-table {
+            position: fixed;
             width: 100%;
-            border-collapse: collapse;
-            background: #ffffff;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 20px;
-        }
-        
-        .category-table th,
-        .category-table td {
-            padding: 15px;
-            text-align: left;
+            height: auto;
+            border-right: none;
             border-bottom: 1px solid #e4e7ec;
+            flex-direction: row;
+            overflow-x: auto;
         }
-        
-        .category-table th {
-            background-color: #f9fafb;
-            font-size: 14px;
-            font-weight: bold;
-            color: #1d2939;
+    
+        .main-container {
+            flex-direction: column;
         }
-        
-        .category-table td {
-            font-size: 14px;
-            color: #565d6d;
+    
+        .content-container {
+            padding: 15px;
+            margin-top: 80px; /* Adjust for the fixed sidebar on mobile */
         }
-        
-        .category-table tr:hover {
-            background: #f1f1f1;
-        }
-        
-        /* Header and Action Bar */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .action-bar {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        
-        .action-bar .button {
-            background-color: #636ae8;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            text-decoration: none;
-        }
-        
-        .action-bar .button:hover {
-            background-color: #4b56e8;
-        }
-        
-        /* Responsive Adjustments */
-        @media (max-width: 768px) {
-            .sidebar-menu {
-                position: fixed;
-                width: 100%;
-                height: auto;
-                border-right: none;
-                border-bottom: 1px solid #e4e7ec;
-                flex-direction: row;
-                overflow-x: auto;
-            }
-        
-            .main-container {
-                flex-direction: column;
-            }
-        
-            .content-container {
-                padding: 15px;
-                margin-top: 80px; /* Adjust for the fixed sidebar on mobile */
-            }
-        }
-    </style>
+    }
+    
+</style>
+    
 
-    <div class="main-container">
-        <!-- Sidebar -->
-        <div class="sidebar-menu">
-            <h2 class="sidebar-title">Admin Actions</h2>
-            <a href="{% url 'create_user_account' %}" class="sidebar-menu-item">
-                <span>Users</span>
-            </a>
-            <a href="{% url 'create_category' %}" class="sidebar-menu-item selected">
-                <span>Categories</span>
-            </a>
-            <h3 class="sidebar-subtitle">Options</h3>
-            <a href="{% url 'dashboard' %}" class="sidebar-menu-item">
-                <span>Dashboard</span>
-            </a>
-        </div>
 
-        <!-- Content -->
-        <div class="content-container">
-            <div class="header">
-                <h2 class="page-title">Categories</h2>
-                <div class="action-bar">
-                    <a href="{% url 'create_category' %}" class="button">Add Category</a>
-                    <select id="filter-dropdown" class="filter-dropdown">
-                        <option value="all">All</option>
-                        <option value="content_creator">Content Creator</option>
-                        <option value="business">Business</option>
-                        <option value="analyst">Analyst</option>
-                    </select>
-                    <input type="text" id="search-box" class="search-box" placeholder="Search Category" />
-                </div>
+
+
+
+
+
+
+<div class="main-container">
+    <!-- Sidebar -->
+    <div class="sidebar-menu">
+        <h2 class="sidebar-title">Admin Actions</h2>
+        <a href="{% url 'create_user_account' %}" class="sidebar-menu-item">
+            <span>Users</span>
+        </a>
+        <a href="{% url 'create_category' %}" class="sidebar-menu-item selected">
+            <span>Categories</span>
+        </a>
+        <h3 class="sidebar-subtitle">Options</h3>
+        <a href="{% url 'dashboard' %}" class="sidebar-menu-item">
+            <span>Dashboard</span>
+        </a>
+    </div>
+
+    <!-- Content -->
+    <div class="content-container">
+        <div class="header">
+            <h2 class="page-title">Categories</h2>
+            <div class="action-bar">
+                <button class="button add-category">
+                    <a href="{% url 'create_category' %}">Add Category</a>
+                </button>
+                <select class="filter-dropdown">
+                    <option>All</option>
+                    <option>Content Creator</option>
+                    <option>Business</option>
+                    <option>Analyst</option>
+                </select>
+                <input type="text" class="search-box" placeholder="Search Category" />
             </div>
-
-            <table class="category-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Content</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="category-table-body">
-                    {% for category in categories %}
-                        <tr id="category-{{ category.id }}" data-category-type="{{ category.type }}">
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ category.name }}</td>
-                            <td>{{ category.description }}</td>
-                            <td><button class="edit-btn" data-id="{{ category.id }}" data-name="{{ category.name }}" data-description="{{ category.description }}">Update</button></td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="4">No categories found.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
+
+        <table class="category-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Content</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in categories %}
+                    <tr id="category-{{ category.id }}">
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ category.name }}</td>
+                        <td>{{ category.description }}</td>
+                        <td><button class="edit-btn" data-id="{{ category.id }}" data-name="{{ category.name }}" data-description="{{ category.description }}">Update</button> </td>
+                        
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No categories found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+</div>
 
-    <div id="edit-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #f9f9f9; padding: 20px; border: 1px solid #ccc; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-        <h3>Edit Category</h3>
-        <form id="edit-category-form">
-            {% csrf_token %}
-            <input type="hidden" id="category-id" name="category_id">
-            
-            <label for="category-name">Category Name:</label>
-            <input type="text" id="category-name" name="name" required><br>
-            
-            <label for="category-description">Description:</label>
-            <input type="text" id="category-description" name="description" required><br>
 
-            <button type="submit">Save</button>
-            <button type="button" id="close-modal">Close</button>
-        </form>
-    </div>
+<div id="edit-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #f9f9f9; padding: 20px; border: 1px solid #ccc; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+    <h3>Edit Category</h3>
+    <form id="edit-category-form">
+        {% csrf_token %}
+        <input type="hidden" id="category-id" name="category_id">
+        
+        <label for="category-name">Category Name:</label>
+        <input type="text" id="category-name" name="name" required><br>
+        
+        <label for="category-description">Description:</label>
+        <input type="text" id="category-description" name="description" required><br>
 
-    <script>
-        $(document).ready(function () {
-            // Handle edit button click
-            $('.edit-btn').on('click', function () {
-                const categoryId = $(this).data('id');
-                const categoryName = $(this).data('name');
-                const categoryDescription = $(this).data('description');
+        <button type="submit">Save</button>
+        <button type="button" id="close-modal">Close</button>
+    </form>
+</div>
+</div>
 
-                $('#category-id').val(categoryId);
-                $('#category-name').val(categoryName);
-                $('#category-description').val(categoryDescription);
 
-                $('#edit-modal').show();
-            });
 
-            // Handle close modal button click
-            $('#close-modal').on('click', function () {
-                $('#edit-modal').hide();
-            });
 
-            // Handle form submission
-            $('#edit-category-form').on('submit', function (e) {
-                e.preventDefault();
-
-                const categoryId = $('#category-id').val();
-                const categoryName = $('#category-name').val();
-                const categoryDescription = $('#category-description').val();
-
-                $.ajax({
-                    url: `{% url 'update_category' 0 %}`.replace('0', categoryId),
-                    method: 'POST',
-                    data: {
-                        'name': categoryName,
-                        'description': categoryDescription,
-                        'csrfmiddlewaretoken': '{{ csrf_token }}'
-                    },
-                    success: function (response) {
-                        if (response.status === 'success') {
-                            $(`#category-${categoryId} td:nth-child(2)`).text(categoryName);
-                            $(`#category-${categoryId} td:nth-child(3)`).text(categoryDescription);
-                            $('#edit-modal').hide();
-                        } else {
-                            alert(response.message);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        alert('Failed to update category. Please try again later.');
-                    }
-                });
-            });
-
-            // Handle filter dropdown change
-            $('#filter-dropdown').on('change', function () {
-                const selectedType = $(this).val();
-                filterCategories(selectedType);
-            });
-
-            // Handle search input
-            $('#search-box').on('input', function () {
-                const searchQuery = $(this).val().toLowerCase();
-                searchCategories(searchQuery);
-            });
-
-            function filterCategories(type) {
-                $('#category-table-body tr').each(function () {
-                    const categoryType = $(this).data('category-type');
-                    if (type === 'all' || categoryType === type) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            }
-
-            function searchCategories(query) {
-                $('#category-table-body tr').each(function () {
-                    const categoryName = $(this).find('td:nth-child(2)').text().toLowerCase();
-                    const categoryDescription = $(this).find('td:nth-child(3)').text().toLowerCase();
-                    if (categoryName.includes(query) || categoryDescription.includes(query)) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            }
-        });
-    </script>
 </body>
 </html>
 

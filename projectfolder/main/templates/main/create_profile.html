@@ -45,8 +45,7 @@
             color: #495057;
         }
 
-        .form-section form input,
-        .form-section form select {
+        .form-section form input {
             width: 100%;
             padding: 10px;
             margin-top: 5px;
@@ -105,7 +104,7 @@
         <!-- Form Section -->
         <div class="form-section">
             <h1>Create Your Profile</h1>
-            <form method="post" action="{% url 'create_profile' %}" enctype="multipart/form-data">
+            <form method="post" action="{% url 'create_profile' %}">
                 {% csrf_token %}
                 <label for="id_first_name">First Name:</label>
                 <input type="text" id="id_first_name" name="first_name" placeholder="Enter your first name">
@@ -116,8 +115,8 @@
                 <label for="id_company">Company:</label>
                 <input type="text" id="id_company" name="company" placeholder="Enter your company name">
 
-                <label for="id_profile_picture">Profile Picture:</label>
-                <input type="file" id="id_profile_picture" name="profile_picture" accept="image/*">
+                <label for="id_timezone">Timezone:</label>
+                <input type="text" id="id_timezone" name="timezone" placeholder="Enter your timezone">
 
                 <button type="submit">Create Profile</button>
             </form>
@@ -129,6 +128,7 @@
             <div id="preview-first-name" class="preview-item">First Name: </div>
             <div id="preview-last-name" class="preview-item">Last Name: </div>
             <div id="preview-company" class="preview-item">Company: </div>
+            <div id="preview-timezone" class="preview-item">Timezone: </div>
         </div>
     </div>
 
@@ -137,16 +137,19 @@
         const firstNameField = document.getElementById('id_first_name');
         const lastNameField = document.getElementById('id_last_name');
         const companyField = document.getElementById('id_company');
+        const timezoneField = document.getElementById('id_timezone');
 
         // Get preview elements
         const firstNamePreview = document.getElementById('preview-first-name');
         const lastNamePreview = document.getElementById('preview-last-name');
         const companyPreview = document.getElementById('preview-company');
+        const timezonePreview = document.getElementById('preview-timezone');
 
         // Add event listeners to form fields
         firstNameField.addEventListener('input', () => updatePreview(firstNameField, firstNamePreview, 'First Name'));
         lastNameField.addEventListener('input', () => updatePreview(lastNameField, lastNamePreview, 'Last Name'));
         companyField.addEventListener('input', () => updatePreview(companyField, companyPreview, 'Company'));
+        timezoneField.addEventListener('input', () => updatePreview(timezoneField, timezonePreview, 'Timezone'));
 
         // Update preview function with zoom effect
         function updatePreview(field, preview, label) {

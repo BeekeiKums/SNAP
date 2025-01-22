@@ -48,6 +48,7 @@ h2 {
     border-color: #636ae8;
 }
 
+
 .login-container {
     background: #ffffff;
     width: 420px;
@@ -98,6 +99,9 @@ input:focus {
     box-shadow: 0px 0px 4px rgba(99, 106, 232, 0.5);
 }
 
+
+
+
 .dropdown {
     margin-bottom: 20px;
     text-align: left;
@@ -134,13 +138,14 @@ select:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    
 }
 
 .button {
     background-color: #636ae8;
     color: #ffffff;
     padding: 12px 20px;
-    width: auto; /* Adjust width to auto */
+    width: 300%;
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -231,6 +236,9 @@ select:focus {
 .register-link a:hover {
     text-decoration: underline;
 }
+
+
+
 
 /* General Styles */
 body {
@@ -396,110 +404,6 @@ body {
 
 .delete-btn:hover {
     background: #c81e1e;
-}
-
-/* Sidebar Styles for Dashboard */
-.sidebar {
-    height: 100%;
-    width: 250px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    background-color: #636ae8;
-    padding-top: 20px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.sidebar a {
-    padding: 15px 20px;
-    text-decoration: none;
-    font-size: 16px;
-    color: white;
-    display: block;
-    transition: background-color 0.3s ease;
-}
-
-.sidebar a:hover {
-    background-color: #575fcf;
-}
-
-.content {
-    margin-left: 250px; /* Add space for the fixed sidebar */
-    padding: 20px;
-    text-align: center;
-}
-
-.content h2 {
-    font-size: 24px;
-    font-weight: 700;
-    color: #2c2e3e;
-}
-
-.content p {
-    font-size: 16px;
-    color: #555;
-}
-
-/* Create User Account Styles */
-.create-account-container {
-    background: #ffffff;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    width: 400px;
-    margin: auto;
-    text-align: center;
-}
-
-.create-account-container h1 {
-    font-size: 24px;
-    margin-bottom: 20px;
-}
-
-.create-account-container form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.create-account-container button {
-    background-color: #636ae8;
-    color: #ffffff;
-    padding: 10px 20px; /* Adjust padding */
-    width: fit-content; /* Set width to fit content */
-    max-width: 100%; /* Ensure it doesn't exceed container width */
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-}
-
-.create-account-container button:hover {
-    background-color: #4b56e8;
-}
-
-.create-account-container a {
-    display: block;
-    margin-top: 15px;
-    text-decoration: none;
-    color: #636ae8;
-    font-size: 14px;
-}
-
-.create-account-container a:hover {
-    text-decoration: underline;
-}
-
-.create-account-container .messages {
-    margin-top: 20px;
-}
-
-.create-account-container .messages p {
-    color: red;
-    font-size: 14px;
 }
 
 

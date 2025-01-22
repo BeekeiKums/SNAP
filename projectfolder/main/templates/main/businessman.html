@@ -22,10 +22,10 @@
             justify-content: space-between;
             padding: 20px;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
+            height : 100vh;
+            position : fixed;
+            left : 0;
+            top : 0;
         }
 
         .sidebar h2 {
@@ -38,7 +38,7 @@
             text-decoration: none;
             color: #fff;
             padding: 10px 15px;
-            margin-bottom: 10px;
+            margin-bottom: 50px ;
             border-radius: 5px;
             font-weight: bold;
             transition: background-color 0.3s;
@@ -62,7 +62,6 @@
             flex-grow: 1;
             background-color: #f9f9f9;
             padding: 20px;
-            margin-left: 250px; /* Adjust based on sidebar width */
             overflow-y: auto;
         }
 
@@ -80,7 +79,6 @@
             position: fixed;
             bottom: 0;
             width: 100%;
-            margin-left: 250px; /* Adjust based on sidebar width */
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -95,8 +93,7 @@
         <a href="#" class="menu-item" data-url="{% url 'download_csv' %}">Download CSV</a>
         <a href="#" class="menu-item" data-url="{% url 'view_businessman_accounts' %}">View User Accounts</a>
         <a href="#" class="menu-item" data-url="{% url 'create_businessman_account' %}">Create Account</a>
-        <a href="{% url 'scrape_profile' %}" class="menu-item">Scrape Profile</a>
-        <a href="{% url 'logout' %}" class="menu-item">Logout</a>
+        <a href="{% url 'admin_logout' %}" class="menu-item"  >Logout</a>
     </div>
 
     <!-- Main Content Area -->

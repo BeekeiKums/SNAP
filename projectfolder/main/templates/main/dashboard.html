@@ -13,39 +13,35 @@
             background-color: #f3f4f6;
         }
 
-        .sidebar {
-            height: 100%;
-            width: 250px;
+        .navbar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #636ae8;
+            color: white;
+            padding: 15px 20px;
             position: fixed;
+            width: 100%;
             top: 0;
             left: 0;
-            background-color: #636ae8;
-            padding-top: 20px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
         }
 
-        .sidebar a {
-            padding: 15px 20px;
+        .navbar a {
+            color: white;
             text-decoration: none;
             font-size: 16px;
-            color: white;
-            display: block;
-            transition: background-color 0.3s ease;
+            font-weight: 500;
+            transition: color 0.3s ease;
         }
 
-        .sidebar a:hover {
-            background-color: #575fcf;
-        }
-
-        .logout {
-            margin-bottom: 20px; /* Adjust margin to position the logout button higher */
+        .navbar a:hover {
+            color: #d0d4f8;
         }
 
         .content {
-            margin-left: 250px; /* Add space for the fixed sidebar */
+            margin-top: 80px; /* Add space for the fixed navbar */
             padding: 20px;
             text-align: center;
         }
@@ -64,20 +60,18 @@
 </head>
 <body>
 
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
-        <div>
-            <a href="{% url 'category_list' %}">View Categories</a>
-            <a href="{% url 'create_category' %}">Create Category</a>
-            <a href="{% url 'create_user_account' %}">Create User Account</a>
-        </div>
-        <a href="{% url 'logout' %}" class="logout">Logout</a>  <!-- Ensure this points to the correct URL -->
+    <!-- Horizontal Navigation Bar -->
+    <div class="navbar">
+        <a href="{% url 'category_list' %}">View Categories</a>
+        <a href="{% url 'create_category' %}">Create Category</a>
+        <a href="{% url 'create_user_account' %}">Create User Account</a>
+        <a href="{% url 'admin_logout' %}">Logout</a>
     </div>
 
     <!-- Page Content -->
     <div class="content">
         <h2>Welcome to the Admin Dashboard</h2>
-        <p>Use the navigation bar on the left to access different features.</p>
+        <p>Use the navigation bar above to access different features.</p>
     </div>
 
 </body>
