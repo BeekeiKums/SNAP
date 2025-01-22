@@ -11,7 +11,7 @@ class UserAccountAdmin(admin.ModelAdmin):
     list_display = ('username', 'email', 'role')
     list_filter = ('role',)
 
-admin.site.register(UserAccount, UserAccountAdmin)
+
 
 
 

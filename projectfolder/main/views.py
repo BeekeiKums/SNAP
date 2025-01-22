@@ -1,35 +1,37 @@
-import csv, openpyxl
-import pandas as pd
-from apify_client import ApifyClient
-from django.http import HttpResponse
-from io import TextIOWrapper
-from django.contrib.auth.decorators import login_required
-from neomodel import db
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from .models import Category
-from django.contrib import messages
-from .forms import UserAccountForm, CategoryForm, BusinessmanForm , ContentCreatorForm, DataAnalystForm , ProfileForm , VisibilitySettingsForm
-from .models import UserAccount , Profile , DataItem , Testimonial
-from django.http import JsonResponse
-from django.conf import settings
-from .models import Person, Movie
-from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import render
+import csv
 import os
 import re
-import csv
 from collections import defaultdict
+from io import TextIOWrapper
+
 import instaloader
-from django.shortcuts import render
-from django.http import JsonResponse
+import pandas as pd
+from apify_client import ApifyClient
 from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from neomodel import db
+import plotly.express as px
+from plotly.io import to_html
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from neo4j import GraphDatabase
+from django.contrib.auth.hashers import make_password
+import requests  # Add this import
+from django.contrib.auth.models import User  # Add this import
 
-
+from .forms import (UserAccountForm, CategoryForm, BusinessmanForm, ContentCreatorForm, DataAnalystForm, ProfileForm, VisibilitySettingsForm, UserCreationForm)
+from .models import Category, UserAccount, Profile, DataItem, Testimonial, Person, Movie
 
 # Initialize Instaloader
 L = instaloader.Instaloader()
-
 
 def login_instagram(request):
     if request.method == "POST":
@@ -40,9 +42,6 @@ def login_instagram(request):
             return JsonResponse({"success": True})
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
-    
-   
-       
 
 def load_session():
     """Load an existing session or log in manually."""
@@ -68,25 +67,14 @@ def extract_hashtags(caption):
         return []
     return re.findall(r"#(\w+)", caption)
 
-from django.conf import settings
-from django.http import JsonResponse
-from django.shortcuts import render
-from instaloader import Instaloader, Profile
-import os
-import csv
-from collections import defaultdict
-import time
-
-# Initialize Instaloader
-L = Instaloader()
-
 def scrape_profile(request):
     if request.method == "POST":
         profile_username = request.POST.get("profile_username")
         num_posts = int(request.POST.get("num_posts", 10))  # Default to 10 posts if no input is given
 
         if not profile_username:
-            return JsonResponse({"success": False, "error": "Profile username is required."})
+            messages.error(request, "Profile username is required.")
+            return redirect('scrape_profile')
 
         try:
             # Authenticate if necessary
@@ -125,14 +113,12 @@ def scrape_profile(request):
                         "video_duration": post.video_duration,
                         "image_url": post.url if not post.is_video else None,
                         "is_sponsored": post.is_sponsored,
-                        
-                        
-                        
                     }
 
                     posts_data.append(post_details)
                 except Exception as e:
-                    return JsonResponse({"success": False, "error": f"Error processing post: {str(e)}"})
+                    messages.error(request, f"Error processing post: {str(e)}")
+                    return redirect('scrape_profile')
 
             # Prepare fieldnames for the selected attributes
             fieldnames = [
@@ -153,7 +139,6 @@ def scrape_profile(request):
                 "is_sponsored"
             ]
 
-
             # Write to CSV
             with open(csv_filename, mode="w", newline="", encoding="utf-8") as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -162,53 +147,40 @@ def scrape_profile(request):
 
             # Return success response with file URL
             file_url = os.path.join(settings.MEDIA_URL, "downloads", f"{profile_username}_posts.csv")
-            return JsonResponse({"success": True, "csv_path": file_url})
+            messages.success(request, f"Profile scraped successfully. Download CSV: {file_url}")
+            return redirect('scrape_profile')
 
         except Exception as e:
-            # Log and return the specific error
-            return JsonResponse({"success": False, "error": f"Error scraping profile: {str(e)}"})
+            messages.error(request, f"Error scraping profile: {str(e)}")
+            return redirect('scrape_profile')
 
     return render(request, "main/scraper.html")
 
+# ...existing code...
 
-
-
-
-
-
-
-
-# Sample data for testing
-data = {
-    'name': ['Alice', 'Bob', 'Charlie', 'David', None],
-    'age': [25, 30, 35, 40, None],
-    'from_location': ['New York', 'Los Angeles', 'Chicago', 'Houston', None],
-    'klout_score': [80, 75, 90, 85, None]
-}
-
-# Create a DataFrame
-df = pd.DataFrame(data)
-
-# Save the data as a CSV file
-df.to_csv('export.csv', index=False)
-
-print("Sample file 'export.csv' created successfully.")
-
-
-def admin_login(request):
+def login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
         
         # Use Django's built-in authentication system
-
         try:
-            user_account = UserAccount.objects.get(username=username)
-            if user_account.password == password:  # This is fine if not using Django's auth
+            user = User.objects.get(username=username)
+            try:
+                user_account = UserAccount.objects.get(user=user)
+            except UserAccount.DoesNotExist:
+                messages.error(request, "User account does not exist!")
+                return redirect('login')
+            
+            if user.check_password(password):  # Use Django's built-in password check
                 # Set session for login
-                request.session['username'] = user_account.username
+                request.session['username'] = user.username
                 request.session['role'] = user_account.role
                 request.session['is_authenticated'] = True
+
+                # Debug statements
+                print(f"User {username} authenticated successfully.")
+                print(f"Role: {user_account.role}")
 
                 # Redirect to respective dashboards based on role
                 if user_account.role == 'admin':
@@ -221,45 +193,29 @@ def admin_login(request):
                     return redirect('data_analyst_dashboard')
             else:
                 messages.error(request, "Invalid credentials!")
-        except UserAccount.DoesNotExist:
+                print("Invalid credentials!")
+        except User.DoesNotExist:
             messages.error(request, "Account does not exist!")
+            print("Account does not exist!")
 
     return render(request, 'main/login.html')
 
-
-
-
-
-
-
-
-
-
-
-        
-
-def admin_logout(request):
-    logout(request)
-    return redirect('admin_login')
-
+def logout(request):
+    auth_logout(request)
+    return redirect('login')
 
 def businessman_dashboard(request):
-   return render(request, 'main/businessman.html')
-
+    return render(request, 'main/businessman.html')
 
 def content_creator_dashboard(request):
     return render(request, 'main/content_creator.html')
 
-
 def data_analyst_dashboard(request):
     return render(request, 'main/data_analyst.html')
-
 
 # Dashboard View
 def dashboard(request):
     return render(request, 'main/dashboard.html')
-
-
 
 # Create Category
 def create_category(request):
@@ -268,22 +224,22 @@ def create_category(request):
         if form.is_valid():
             form.save() 
             return redirect('category_list')
-    
     else: 
-        form = CategoryForm()  #Empty form for GET requet
-    return render(request, 'main/create_category.html', {'form': form}) 
-
+        form = CategoryForm()  # Empty form for GET request
+    return render(request, 'main/create_category.html', {'form': form})
 
 @csrf_exempt
 def update_category(request, category_id):
     if request.method == 'POST':
         name = request.POST.get('name')
         description = request.POST.get('description')
+        type = request.POST.get('type')
 
         try:
             category = Category.objects.get(id=category_id)
             category.name = name
             category.description = description
+            category.type = type
             category.save()
 
             # Return both the updated name and description
@@ -291,92 +247,80 @@ def update_category(request, category_id):
                 'status': 'success',
                 'id': category.id,
                 'name': category.name,
-                'description': category.description
+                'description': category.description,
+                'type': category.type
             })
         except Category.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Category not found'})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
-  
-    
+
 def category_list(request):
     categories = Category.objects.all()  # Make sure this is fetching the categories correctly
     return render(request, 'main/category_list.html', {'categories': categories})
 
-import requests
 def get_timezone_from_ip(ip):
     try: 
-        #using ip-api to get timezone
+        # Using ip-api to get timezone
         response = requests.get(f"http://ip-api.com/json/{ip}")
         if response.status_code == 200:
             data = response.json()
             return data.get("timezone", "Unknown")
-    
     except Exception as e:
         print(f"Error fetching timezone: {e}")
-    return "Unknown"        
+    return "Unknown"
 
-#create profile 
+
 def create_profile(request):
     if request.method == 'POST':
-        form = ProfileForm(request.POST)
+        form = ProfileForm(request.POST, request.FILES)
         if form.is_valid():
-            #Save the form data to create a new profile instance
+            # Save the form data to create a new profile instance
             form.save()
-            #Redirect to a success page or another relevant page
-            return redirect('businessman_dashboard')
-    
-    else :
-        # Get user IP address
-        ip = "124.197.66.11"
-        timezone = get_timezone_from_ip(ip)
-        form = ProfileForm(initial={'timezone' : timezone})
-        
+            # Redirect to the login page after profile creation
+            messages.success(request, 'Profile created successfully! Please log in.')
+            return redirect('login')
+    else:
+        form = ProfileForm()
         
     # Render the template with the form
-    return render(request, 'main/create_profile.html', {'form' : form})        
-  
-  
+    return render(request, 'main/create_profile.html', {'form': form})
+
+
 def get_client_ip(request):
     """ Extract the client's IP from the request headers"""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         ip = x_forwarded_for.split(',')[0]
-        
     else:
         ip = request.META.get('REMOTE_ADDR')
-        
-    return ip                
-            
+    return ip
 
-#create user account      
+# ...existing code...
+
 def create_user_account(request):
     if request.method == 'POST':
-        form = UserAccountForm(request.POST)
+        form = UserCreationForm(request.POST)
         if form.is_valid():
-            
-            # Check for duplicate usernames or emails
-            
-            if UserAccount.objects.filter(username=form.cleaned_data['username']).exists():
-                messages.error(request, "Username already exists!")
-            elif UserAccount.objects.filter(email=form.cleaned_data['email']).exists():
-                messages.error(request, "Email already exists!")
-            else:
-                # Save the user account
-                
-                user_account = form.save(commit=False)  # Do not save to DB yet
-                user_account.role = 'admin'
-                user_account.save()
-                
-                messages.success(request, "User account created successfully!")
-                return redirect('create_profile')  # Redirect to success page
-
-        else:
-            messages.error(request, "Failed to create account. Please check your input.")
+            user = form.save()
+            role = request.POST.get('role')
+            user_account = UserAccount.objects.create(
+                user=user,
+                role=role
+            )
+            user_account.save()
+            # Automatically log in the user after account creation
+            auth_login(request, user)
+            messages.success(request, 'Account created successfully! Please create your profile.')
+            # Redirect to the admin dashboard if the user is an admin
+            if user.is_staff:
+                return redirect('dashboard')
+            return redirect('create_profile')
     else:
-        form = UserAccountForm()
-
+        form = UserCreationForm()
     return render(request, 'main/create_user_account.html', {'form': form})
+
+# ...existing code...
 
 def create_businessman_account(request):
     if request.method == 'POST':
@@ -391,13 +335,13 @@ def create_businessman_account(request):
                 # Save the user account and set role to 'businessman'
                 user_account = form.save(commit=False)  # Do not save to DB yet
                 user_account.role = 'businessman'       # Assign role in backend
+                user_account.password = make_password(form.cleaned_data['password'])  # Ensure password is hashed
                 user_account.save()                    # Save to DB
                 messages.success(request, "Businessman account created successfully!")
                 return redirect('create_businessman_account')  # Redirect back to the form
     else:
         form = BusinessmanForm()
     return render(request, 'main/create_businessman_acc.html', {'form': form})
-
 
 def create_content_creator_account(request):
     if request.method == 'POST':
@@ -410,13 +354,14 @@ def create_content_creator_account(request):
             else: 
                 user_account = form.save(commit=False)
                 user_account.role = 'content_creator'
+                user_account.password = make_password(form.cleaned_data['password'])  # Ensure password is hashed
                 user_account.save()
                 
-                messages.success(request, "Content cretor account created successfully!")
+                messages.success(request, "Content creator account created successfully!")
                 return redirect('create_content_creator_account')
-    else :
+    else:
         form = ContentCreatorForm()
-    return render(request, 'main/create_content_creator_acc.html', {'form': form}) 
+    return render(request, 'main/create_content_creator_acc.html', {'form': form})
 
 def create_data_analyst_account(request):
     if request.method == 'POST':
@@ -426,38 +371,38 @@ def create_data_analyst_account(request):
                 messages.error(request, "Username already exists!")
             elif UserAccount.objects.filter(email=form.cleaned_data['email']).exists():
                 messages.error(request, "Email already exists!")
-            else :
+            else:
                 user_account = form.save(commit=False)
                 user_account.role = 'data_analyst'
+                user_account.password = make_password(form.cleaned_data['password'])  # Ensure password is hashed
                 user_account.save()
                 messages.success(request, "Data analyst account created successfully!")
                 return redirect('create_data_analyst_account')
-    else :
+    else:
         form = DataAnalystForm()
-    return render(request, 'main/create_data_analyst_acc.html', {'form': form})                    
-                           
-#view user profile
+    return render(request, 'main/create_data_analyst_acc.html', {'form': form})
+
+# View user profile
 def view_profile(request):
-    user_profile  = Profile.objects.all()
-    return render(request, 'main/myprofile.html', {'user_profile' : user_profile})
-#View to list all user accounts
+    user_profile = Profile.objects.all()
+    return render(request, 'main/myprofile.html', {'user_profile': user_profile})
+
+# View to list all user accounts
 def view_user_accounts(request):
     users = UserAccount.objects.all()
     return render(request, 'main/view_user_accounts.html', {'users': users})
 
 def view_businessman_accounts(request):
-    users = UserAccount.objects.filter(role  = 'businessman')
+    users = UserAccount.objects.filter(role='businessman')
     return render(request, 'main/view_businessman_accounts.html', {'users': users})
 
 def view_content_creator_accounts(request):
-    users = UserAccount.objects.filter(role = 'content_creator')
+    users = UserAccount.objects.filter(role='content_creator')
     return render(request, 'main/view_content_accounts.html', {'users': users})
 
 def view_data_analyst_accounts(request):
-    users = UserAccount.objects.filter(role = 'data_analyst')
-    return render(request, 'main/view_data_analyst_accounts.html', {'users':users})
-
-
+    users = UserAccount.objects.filter(role='data_analyst')
+    return render(request, 'main/view_data_analyst_accounts.html', {'users': users})
 
 def update_user_account(request, user_id):
     if request.method == 'POST':
@@ -470,8 +415,6 @@ def update_user_account(request, user_id):
 
     return JsonResponse({'status': 'fail'})
 
-
-
 def view_profile_content_creator(request):
     return render(request, 'view_profile_content_creator.html')
 
@@ -480,88 +423,17 @@ import json
 def update_profile(request, profile_id):
     if request.method == 'POST':
         profile = get_object_or_404(Profile, profile_id=profile_id)
-        data = json.loads(request.body) # Parse JSON data
-        profile.first_name = data.get('first_name' , profile.first_name)
-        profile.last_name = data.get('last_name' , profile.last_name)
-        profile.company = data.get('company' , profile.company)
-        profile.timezone = data.get('timezone' , profile.timezone)
+        data = json.loads(request.body)  # Parse JSON data
+        profile.first_name = data.get('first_name', profile.first_name)
+        profile.last_name = data.get('last_name', profile.last_name)
+        profile.company = data.get('company', profile.company)
+        profile.timezone = data.get('timezone', profile.timezone)
         
         profile.save()
         
         return JsonResponse({'status': 'success'})
 
     return JsonResponse({'status': 'fail'}, status=400)
-
-
-import os
-from dotenv import load_dotenv
-
-
-# Extract Data
-            
-
-
-
-from django.http import HttpResponse
-import csv
-
-
-
-#upload csv
-
-import csv
-from io import TextIOWrapper
-from django.shortcuts import render, redirect
-from django.contrib import messages
-
-
-'''
-def upload_csv_or_xlsx(request):
-    if request.method == "POST":
-        uploaded_file = request.FILES.get("file")
-        
-        if not uploaded_file:
-            messages.error(request, "Error: No file uploaded.")
-            return redirect('upload_csv_or_xlsx')
-        
-        try:
-            #Save the original file name in the session
-            original_file_name = os.path.splitext(uploaded_file.name)[0] #Remove extension
-            cleaned_file_name = original_file_name.strip() + ".csv" #Ensure '.csv' extension
-            request.session['original_file_name'] = cleaned_file_name
-            
-            
-             
-            
-            
-            # Read CSV file
-            file_data = TextIOWrapper(uploaded_file.file, encoding='utf-8')
-            csv_reader = csv.DictReader(file_data)
-            headers = csv_reader.fieldnames
-            data = [row for row in csv_reader]
-
-            if not headers:
-                messages.error(request, "The CSV file must have at least one column.")
-                return redirect('upload_csv_or_xlsx')
-
-            # Save headers and data for later use
-            request.session['uploaded_headers'] = headers
-            request.session['uploaded_data'] = data
-            messages.success(request, f"File {cleaned_file_name} uploaded successfully.")
-            return redirect('auto_preprocess')
-        except Exception as e:
-            messages.error(request, f"Error processing the file: {str(e)}")
-            return redirect('upload_csv_or_xlsx')
-    
-    return render(request, "main/upload_excel.html")
-'''
-
-import os
-import csv
-from io import TextIOWrapper
-from django.shortcuts import render, redirect
-from django.contrib import messages
-
 
 def upload_csv_or_xlsx(request):
     if request.method == "POST":
@@ -601,31 +473,12 @@ def upload_csv_or_xlsx(request):
             request.session['uploaded_data'] = data
             messages.success(request, f"File {cleaned_file_name} uploaded successfully.")
             return redirect('auto_preprocess')
-            
-            
-
         except Exception as e:
             messages.error(request, f"Error processing the file: {str(e)}")
             return redirect('upload_csv_or_xlsx')
 
     return render(request, "main/upload_excel.html")
 
-
-import pandas as pd
-from io import TextIOWrapper
-from django.shortcuts import render, redirect
-from django.contrib import messages
-
-
-
-
-
-#auto_data process
-
-import pandas as pd
-
-#use
-'''
 def auto_preprocess(request):
     import pandas as pd
     from sklearn.preprocessing import LabelEncoder
@@ -700,220 +553,6 @@ def auto_preprocess(request):
             return redirect('upload_csv_or_xlsx')
 
     return render(request, 'main/data_management.html')
-'''
-
-def auto_preprocess(request):
-    import pandas as pd
-    from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-    from sklearn.impute import SimpleImputer
-
-    if request.method == 'POST':
-        try:
-            # Retrieve uploaded data from the session
-            uploaded_data = request.session.get('uploaded_data', [])
-            if not uploaded_data:
-                messages.error(request, "No data available for preprocessing. Please upload a file first.")
-                return redirect('upload_csv_or_xlsx')
-
-            # Convert session data to DataFrame
-            df = pd.DataFrame(uploaded_data)
-            print("Original DataFrame:")
-            print(df.head())  # Print original data for verification
-
-            # Step 1: Drop rows and columns where all values are NaN
-            df.dropna(how='all', inplace=True)
-            df.dropna(axis=1, how='all', inplace=True)
-            print("After Dropping Empty Rows/Columns:")
-            print(df.head())  # Verify after removing empty rows/columns
-
-            # Step 2: Clean column names dynamically
-            df.columns = (
-                df.columns.str.strip()
-                .str.replace(r'\W+', '_', regex=True)
-                .str.lower()
-            )
-            print("Cleaned Column Names:")
-            print(df.columns)  # Verify cleaned column names
-
-            # Remove columns with a single unique value (constant columns)
-            df = df.loc[:, df.nunique() > 1]
-            print("After Removing Constant Columns:")
-            print(df.head())  # Verify columns with unique values removed
-
-            # Remove columns with > 90% missing values
-            df = df.loc[:, df.isnull().mean() < 0.9]
-            print("After Dropping Columns with >90% Missing Values:")
-            print(df.head())  # Verify after dropping columns with high missing data
-
-            # Step 3: Process columns dynamically
-            label_encoder = LabelEncoder()
-            for col in df.columns:
-                if df[col].dtype == 'object':
-                    df[col] = df[col].astype(str).str.strip().replace({'nan': '', 'NaN': '', 'None': ''})
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
-                    if df[col].isnull().all():
-                        df[col] = label_encoder.fit_transform(df[col].astype(str))
-                elif pd.api.types.is_numeric_dtype(df[col]):
-                    df[col].fillna(0, inplace=True)
-
-            print("Processed DataFrame:")
-            print(df.head())  # Verify processed data
-
-            # Step 4: Sample rows for performance
-            if len(df) > 500:
-                df = df.sample(n=500, random_state=42)
-                print("Sampled DataFrame:")
-                print(df.head())  # Verify sampling
-
-            # Save cleaned data back to the session
-            request.session['uploaded_data'] = df.to_dict(orient='records')
-            request.session['uploaded_headers'] = df.columns.tolist()
-
-            messages.success(request, "Data successfully preprocessed. All columns converted to numeric where possible.")
-            return redirect('manual_preprocess')
-
-        except Exception as e:
-            messages.error(request, f"Error during preprocessing: {str(e)}")
-            return redirect('upload_csv_or_xlsx')
-
-    return render(request, 'main/data_management.html')
-
-
-
-            
-
-from sklearn.preprocessing import LabelEncoder
-
-
-
-
-
-
-'''
-import re
-def process_columns(dataframe):
-    new_columns = {}
-
-    for col in dataframe.columns:
-        try:
-
-            dataframe[col] = dataframe[col].astype(float)
-
-            if 'count' not in col.lower():
-                new_columns[col] = f"{col}_count"
-        except ValueError:
-            
-            pass
-
-    
-    dataframe = dataframe.rename(columns=new_columns)
-    
-    return dataframe
-
-def func(dataframe):
-    analyze_lists = [r'.*view.*',r'^like.*count',r'comment.*count',r'share.*count']
-    column_names = ['view_count','like_count','comment_count','share_count']
-    df_test = pd.DataFrame()
-    if not any(dataframe.columns.str.contains(r'(?i)hashtag')):
-    
-        df_test['hashtags'] = pd.Series(['-']*len(dataframe))
-        for index, regex in enumerate(analyze_lists):
-            df_test[column_names[index]] = pd.Series([0.0]*len(dataframe))
-
-            view_columns = [col for col in dataframe.columns if re.match(regex, col, re.IGNORECASE)]
-            
-            for i in view_columns:
-                dataframe[i] = dataframe[i].fillna(0)
-                if dataframe[i].dtype == 'int' or dataframe[i].dtype == 'float':
-                    df_test[column_names[index]] += dataframe[i]  
-    else:
-        hashtag_columns = [col for col in dataframe.columns if 'hashtag' in col.lower() and dataframe[col].dtypes == object]
-        
-    
-        columns_to_split = [col for col in hashtag_columns if dataframe[col].str.contains(',').all()]
-        for col in columns_to_split:
-    
-            split_cols = dataframe[col].str.split(',', expand=True)
-    
-            for i in range(split_cols.shape[1]):
-                dataframe[f'{col}_text{i+1}'] = split_cols[i]
-    
-            dataframe = dataframe.drop(columns=col)
-
-        hashtag_columns = [col for col in dataframe.columns if 'hashtag' in col.lower()]
-        hashtag_columns_length = dataframe[hashtag_columns].notnull().sum(axis=1).tolist()
-        hashtag_values = dataframe[hashtag_columns].values.tolist()
-
-        all_hashtags = [
-            tag  if len(tag) < 100 else 'link'
-            for tags in hashtag_values
-            for tag in tags
-            if isinstance(tag, str)
-        ]
-        
-        
-        df_test['hashtags'] = pd.Series(all_hashtags)
-
-        hashtag_columns = [col for col in dataframe.columns if 'hashtag' in col.lower() and dataframe[col].dtypes == object]
-        hashtag_columns_length = dataframe[hashtag_columns].notnull().sum(axis=1).tolist()
-        
-        for index, regex in enumerate(analyze_lists):
-            df_test[column_names[index]] = pd.Series([0.0]*len(all_hashtags))
-            view_columns = [col for col in dataframe.columns if re.match(regex, col, re.IGNORECASE)]
-        
-            for i in view_columns:
-                dataframe[i] = dataframe[i].fillna(0)
-                if dataframe[i].dtype == 'int' or dataframe[i].dtype == 'float':
-                    df_test[column_names[index]] += dataframe[i]
-
-        
-            all_views = [count / length for count, length in zip(df_test[column_names[index]], hashtag_columns_length) for _ in range(length)]
-            df_test[column_names[index]] = pd.Series(all_views)
-
-    return df_test
-
-
-def auto_preprocess(request):
-    import pandas as pd
-
-    if request.method == 'POST':
-        try:
-            # Retrieve uploaded data from the session
-            uploaded_data = request.session.get('uploaded_data', [])
-            if not uploaded_data:
-                messages.error(request, "No data available for preprocessing. Please upload a file first.")
-                return redirect('upload_csv_or_xlsx')
-
-            # Convert session data to DataFrame
-            df = pd.DataFrame(uploaded_data)
-
-           
-            
-            
-            df = process_columns(df)
-            df = func(df)
-            processed_columns = df.columns.tolist()
-            
-
-            # Save cleaned data back to the session
-            request.session['uploaded_data'] = df.to_dict(orient='records')
-            request.session['uploaded_headers'] = processed_columns
-            request.session['uploaded_headers'] = list(df.columns)
-
-
-            messages.success(request, "Data successfully preprocessed.")
-            return redirect('manual_preprocess')
-
-        except Exception as e:
-            messages.error(request, f"Error during preprocessing: {str(e)}")
-            return redirect('upload_csv_or_xlsx')
-
-    return render(request, 'main/data_management.html')
-'''
-
-
-
-
 
 def manual_preprocess(request):
     import math
@@ -954,20 +593,6 @@ def manual_preprocess(request):
                                                 'current_page': page,
                                                 'total_pages': total_pages})
 
-  
-        
-# views.py
-
-from django.shortcuts import render, redirect
-from django.contrib import messages
-import networkx as nx
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import io
-import base64
-
-
 def dashboard_view(request):
     # Retrieve headers and data from session
     headers = request.session.get('uploaded_headers', [])
@@ -985,15 +610,6 @@ def dashboard_view(request):
         'headers': numeric_headers
     })
 
-
-
-
-
-
-
-
-#use
-'''
 def create_or_view_visualization(request):
     try:
         # Retrieve uploaded data
@@ -1055,127 +671,6 @@ def create_or_view_visualization(request):
             pos = nx.circular_layout(G)
         else:
             pos = nx.kamada_kawai_layout(G)  # Kamada-Kawai for better large graph visualization
-
-
-            
-
-
-        # Step 4: Highlight Nodes Based on Centrality
-        node_sizes = [max(200, degree_centrality[node] * 2000) for node in G.nodes()]
-        node_colors = ['orange' if node in top_degree_nodes else 'skyblue' for node in G.nodes()]
-
-        # Step 5: Plot the Graph
-        plt.figure(figsize=(16, 12))
-        nx.draw(G, pos, with_labels=True, 
-                node_color=node_colors, 
-                node_size=node_sizes, 
-                edge_color="gray", 
-                font_size=8, alpha=0.7)
-
-        # Save image to base64
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight')
-        plt.close()
-        buf.seek(0)
-        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-
-        # Prepare centrality results for frontend display
-        centrality_results = [
-            {"node": node, "degree": round(metrics["degree"], 4), 
-             "closeness": round(metrics["closeness"], 4), 
-             "betweenness": round(metrics["betweenness"], 4)}
-            for node, metrics in sorted(centrality_metrics.items(), key=lambda x: x[1]["degree"], reverse=True)[:10]
-        ]
-
-        # Render visualization and centrality metrics
-        return render(request, 'main/view_visualization.html', {
-            'headers' : headers,
-            'node_count': G.number_of_nodes(),
-            'edge_count': G.number_of_edges(),
-            'visualization_image': f"data:image/png;base64,{img_base64}",
-            'centrality_results': centrality_results  # Top nodes with centrality scores
-        })
-
-    except Exception as e:
-        messages.error(request, f"Error creating visualization: {str(e)}")
-        return redirect('upload_csv_or_xlsx')
-'''
-
-
-import networkx as nx
-import pandas as pd
-import plotly.graph_objects as go
-from django.shortcuts import render, redirect
-from django.contrib import messages
-import io
-import base64
-
-
-
-
-def create_or_view_visualization(request):
-    try:
-        # Retrieve uploaded data
-        uploaded_data = request.session.get('uploaded_data', [])
-        headers = request.session.get('uploaded_headers', [])
-
-        if not uploaded_data or not headers:
-            messages.error(request, "No data available for visualization.")
-            return redirect('upload_csv_or_xlsx')
-
-        # Step 1: Build the Graph
-        G = nx.Graph()
-        for row in uploaded_data:
-            row_nodes = []
-            for header in headers:
-                value = row.get(header)
-                if value and isinstance(value, str) and len(value) < 50 and value not in ['null', 'None', 'nan', '-', '']:
-                    if 'http' in value or 'timestamp' in header.lower():
-                        continue
-                    G.add_node(value)
-                    row_nodes.append(value)
-
-            # Add edges with dynamic limit
-            max_edges_per_node = 10
-            node_edges_count = {}
-            for i in range(len(row_nodes)):
-                for j in range(i + 1, len(row_nodes)):
-                    node1, node2 = row_nodes[i], row_nodes[j]
-                    if node_edges_count.get(node1, 0) >= max_edges_per_node:
-                        continue
-                    if node_edges_count.get(node2, 0) >= max_edges_per_node:
-                        continue
-                    G.add_edge(node1, node2)
-                    node_edges_count[node1] = node_edges_count.get(node1, 0) + 1
-                    node_edges_count[node2] = node_edges_count.get(node2, 0) + 1
-
-        # Step 2: Calculate Centrality Metrics
-        degree_centrality = nx.degree_centrality(G)
-        closeness_centrality = nx.closeness_centrality(G)
-        betweenness_centrality = nx.betweenness_centrality(G)
-
-        # Combine centrality measures into a dictionary
-        centrality_metrics = {}
-        for node in G.nodes():
-            centrality_metrics[node] = {
-                "degree": degree_centrality.get(node, 0),
-                "closeness": closeness_centrality.get(node, 0),
-                "betweenness": betweenness_centrality.get(node, 0)
-            }
-
-        # Identify top nodes by degree centrality
-        top_degree_nodes = sorted(degree_centrality, key=degree_centrality.get, reverse=True)[:10]
-
-        # Step 3: Dynamic Layout
-        layout_style = request.GET.get('layout', 'kamada_kawai')
-        if layout_style == 'spring':
-            pos = nx.spring_layout(G, k=0.5, seed=42)  # Adjust "k" for spacing
-        elif layout_style == 'circular':
-            pos = nx.circular_layout(G)
-        else:
-            pos = nx.kamada_kawai_layout(G)  # Kamada-Kawai for better large graph visualization
-
-
 
         edge_x = []
         edge_y = []
@@ -1240,7 +735,6 @@ def create_or_view_visualization(request):
         # Determine the template
         template = 'main/businessman.html' if request.GET.get('view') == 'businessman' else 'main/view_visualization.html'
 
-
         # Render visualization
         return render(request, template, {
             'graph_html': graph_html,
@@ -1253,24 +747,6 @@ def create_or_view_visualization(request):
     except Exception as e:
         messages.error(request, f"Error creating visualization: {str(e)}")
         return redirect('upload_csv_or_xlsx')
-
-
-
-
-import plotly.graph_objects as go
-
-
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.preprocessing import LabelEncoder
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import io
-import base64
 
 def test_predictive_models(request):
     try:
@@ -1288,8 +764,6 @@ def test_predictive_models(request):
         print(df.dtypes)
         print(df.head())
         
-        
-
         # User inputs from form
         target_column = request.GET.get('target_column')
         model_type = request.GET.get('model_type', 'linear_regression')
@@ -1323,8 +797,6 @@ def test_predictive_models(request):
         X = numeric_df.drop(columns=[target_column])
         y = numeric_df[target_column]
         
-        
-
         # Check if there are valid features left
         if X.empty or y.empty:
             messages.error(request, "No valid features left for modeling after preprocessing.")
@@ -1378,9 +850,6 @@ def test_predictive_models(request):
         messages.error(request, f"Model testing failed: {str(e)}")
         return redirect('create_or_view_visualization')
 
-from neo4j import GraphDatabase
-
-    
 def save_to_neo4j(graph, headers):
 
     import logging
@@ -1392,10 +861,6 @@ def save_to_neo4j(graph, headers):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     
-    
-
-
-
     driver = GraphDatabase.driver(uri, auth=(username, password))
     
     def add_to_neo4j(tx, node1,node2):
@@ -1413,12 +878,6 @@ def save_to_neo4j(graph, headers):
             
     driver.close()   
     logger.info("All data saved to Neo4j successfully.")
-
-#charts
-import plotly.express as px
-import pandas as pd
-from plotly.io import to_html
-from django.shortcuts import render
 
 def upload_and_view_charts(request):
     fig_html_list = []
@@ -1445,7 +904,6 @@ def upload_and_view_charts(request):
 
     return render(request, 'main/upload_and_view_charts.html', {'fig_html_list': fig_html_list})
 
-# Instagram
 def handle_instagram_data(df):
     fig_html_list = []
 
@@ -1524,72 +982,6 @@ def handle_instagram_data(df):
             labels={'likes_count': 'likes_count', 'comments_count': 'comments_count'}
         )
         fig_html_list.append(fig5.to_html(full_html=False))
-    # Chart 6: Followers Distribution (Histogram)
-    if 'followers_count' in df.columns:
-        df['followers_count'] = pd.to_numeric(df['followers_count'], errors='coerce')  # Ensure numeric type
-        valid_followers_df = df.dropna(subset=['followers_count'])
-        fig1 = px.histogram(
-            valid_followers_df,
-            x='followers_count',
-            title='Distribution of Followers',
-            labels={'followers_count': 'Followers Count'},
-            nbins=20  # Adjust the number of bins as needed
-        )
-        fig_html_list.append(fig1.to_html(full_html=False))
-
-    # Chart 7: Average Interaction by Account Type (Grouped Bar Chart)
-    if {'account_type', 'likes_count', 'comments_count'}.issubset(df.columns):
-        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
-        df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
-        valid_interaction_df = df.dropna(subset=['account_type', 'likes_count', 'comments_count'])
-        interaction_avg = (
-            valid_interaction_df
-            .groupby('account_type')
-            .mean(numeric_only=True)[['likes_count', 'comments_count']]
-            .reset_index()
-        )
-        fig2 = px.bar(
-            interaction_avg,
-            x='account_type',
-            y=['likes_count', 'comments_count'],
-            title='Average Interaction by Account Type',
-            labels={'value': 'Average Count', 'account_type': 'Account Type', 'variable': 'Metric'},
-            barmode='group'
-        )
-        fig_html_list.append(fig2.to_html(full_html=False))
-
-    # Chart 8: Engagement Rate Distribution (Histogram)
-    if 'engagement_rate' in df.columns:
-        df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
-        valid_engagement_df = df.dropna(subset=['engagement_rate'])
-        fig3 = px.histogram(
-            valid_engagement_df,
-            x='engagement_rate',
-            title='Engagement Rate Distribution',
-            labels={'engagement_rate': 'Engagement Rate'},
-            nbins=20  # Adjust the number of bins as needed
-        )
-        fig_html_list.append(fig3.to_html(full_html=False))
-    # Chart 9: Ad Spend vs CTR (Scatter Plot)
-    if {'spend', 'ctr'}.issubset(df.columns):
-        # Ensure numeric type for spend and ctr
-        df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
-        df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
-
-        # Remove rows with NaN values in spend and ctr
-        valid_spend_ctr_df = df.dropna(subset=['spend', 'ctr'])
-
-        # Create scatter plot
-        fig1 = px.scatter(
-            valid_spend_ctr_df,
-            x='spend',
-            y='ctr',
-            title='Ad Spend vs CTR',
-            labels={'spend': 'Ad Spend', 'ctr': 'Click Through Rate (CTR)'},
-            size='spend',  # Optional: Bubble size proportional to spend
-            color='ctr'  # Optional: Color based on CTR
-        )
-        fig_html_list.append(fig1.to_html(full_html=False))
 
     return fig_html_list
 
@@ -1652,106 +1044,37 @@ def handle_tiktok_data(df):
         )
         fig_html_list.append(fig5.to_html(full_html=False))
 
-    # Chart 5: Followers distribution (Histogram)
-    if 'followers_count' in df.columns:
-        df['followers_count'] = pd.to_numeric(df['followers_count'], errors='coerce')  # Ensure numeric type
-        valid_followers_df = df.dropna(subset=['followers_count'])
-        fig1 = px.histogram(
-            valid_followers_df,
-            x='followers_count',
-            title='Distribution of Followers',
-            labels={'followers_count': 'Followers Count'},
-            nbins=20  # Adjust the number of bins as needed
-        )
-        fig_html_list.append(fig1.to_html(full_html=False))
-
-    # Chart 6: Average interaction by account type (Grouped Bar Chart)
-    if {'account_type', 'likes_count', 'comments_count'}.issubset(df.columns):
-        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
-        df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
-        valid_interaction_df = df.dropna(subset=['account_type', 'likes_count', 'comments_count'])
-        interaction_avg = (
-            valid_interaction_df
-            .groupby('account_type')
-            .mean(numeric_only=True)[['likes_count', 'comments_count']]
-            .reset_index()
-        )
-        fig2 = px.bar(
-            interaction_avg,
-            x='account_type',
-            y=['likes_count', 'comments_count'],
-            title='Average Interaction by Account Type',
-            labels={'value': 'Average Count', 'account_type': 'Account Type', 'variable': 'Metric'},
-            barmode='group'
-        )
-        fig_html_list.append(fig2.to_html(full_html=False))
-
-
-    # Chart 8: Ad spend vs CTR (Scatter Plot)
-    if {'spend', 'ctr'}.issubset(df.columns):
-        # Ensure numeric type for spend and ctr
-        df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
-        df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
-
-        # Remove rows with NaN values in spend and ctr
-        valid_spend_ctr_df = df.dropna(subset=['spend', 'ctr'])
-
-        # Create scatter plot
-        fig1 = px.scatter(
-            valid_spend_ctr_df,
-            x='spend',
-            y='ctr',
-            title='Ad Spend vs CTR',
-            labels={'spend': 'Ad Spend', 'ctr': 'Click Through Rate (CTR)'},
-            size='spend',  # Optional: Bubble size proportional to spend
-            color='ctr'  # Optional: Color based on CTR
-        )
-        fig_html_list.append(fig1.to_html(full_html=False))
-
     return fig_html_list
 
-# LinkedIn
 def handle_linkedin_data(df):
     fig_html_list = []
 
-    # chart 1: Industry distribution (pie)
+    # Chart 1: Industry distribution (Pie Chart)
     if 'industry' in df.columns:
-        try:
-
-            industry_counts = df['industry'].dropna().value_counts().reset_index()
-            industry_counts.columns = ['industry', 'count']
-
-            # pie
-            fig1 = px.pie(
-                industry_counts,
-                names='industry',
-                values='count',
-                title='Industry distribution',
-                labels={'industry': 'industry', 'count': 'count'}
-            )
-            fig_html_list.append(fig1.to_html(full_html=False))
-        except Exception as e:
-            fig_html_list.append(f"<div>mistake: {e}</div>")
-    else:
-        fig_html_list.append("<div>fail: data not find 'industry' column。</div>")
+        industry_counts = df['industry'].dropna().value_counts().reset_index()
+        industry_counts.columns = ['industry', 'count']
+        fig1 = px.pie(
+            industry_counts,
+            names='industry',
+            values='count',
+            title='Industry distribution',
+            labels={'industry': 'industry', 'count': 'count'}
+        )
+        fig_html_list.append(fig1.to_html(full_html=False))
 
     # Chart 2: Engagement Rate Distribution (Histogram)
     if 'engagement_rate' in df.columns:
-        try:
-            df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
-            fig2 = px.histogram(
-                df,
-                x='engagement_rate',
-                title='Engagement Rate Distribution',
-                labels={'engagement_rate': 'Engagement Rate'},
-                nbins=20
-            )
-            fig_html_list.append(fig2.to_html(full_html=False))
-        except Exception as e:
-            fig_html_list.append(f"<div>mistake: {e}</div>")
-    else:
-        fig_html_list.append("<div>fail: data not find 'engagement_rate' column。</div>")
-    #chart3
+        df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
+        fig2 = px.histogram(
+            df,
+            x='engagement_rate',
+            title='Engagement Rate Distribution',
+            labels={'engagement_rate': 'Engagement Rate'},
+            nbins=20
+        )
+        fig_html_list.append(fig2.to_html(full_html=False))
+
+    # Chart 3: Likes Count by Industry (Bar Chart)
     if 'industry' in df.columns and 'likes_count' in df.columns:
         df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
         likes_by_industry = df.groupby('industry')['likes_count'].sum().reset_index()
@@ -1766,52 +1089,37 @@ def handle_linkedin_data(df):
 
     # Chart 4: Job Title Distribution (Bar Chart)
     if 'job_title' in df.columns:
-        try:
-            job_counts = df['job_title'].dropna().value_counts().reset_index()
-            job_counts.columns = ['job_title', 'count']
-            fig4 = px.bar(
-                job_counts,
-                x='job_title',
-                y='count',
-                title='Job Title Distribution',
-                labels={'job_title': 'Job Title', 'count': 'Count'}
-            )
-            fig_html_list.append(fig4.to_html(full_html=False))
-        except Exception as e:
-            fig_html_list.append(f"<div>mistake: {e}</div>")
-    else:
-        fig_html_list.append("<div>fail: data not find 'job_title' column。</div>")
+        job_counts = df['job_title'].dropna().value_counts().reset_index()
+        job_counts.columns = ['job_title', 'count']
+        fig4 = px.bar(
+            job_counts,
+            x='job_title',
+            y='count',
+            title='Job Title Distribution',
+            labels={'job_title': 'Job Title', 'count': 'Count'}
+        )
+        fig_html_list.append(fig4.to_html(full_html=False))
 
     # Chart 5: Ad Spend vs CTR (Scatter Plot)
     if 'spend' in df.columns and 'ctr' in df.columns:
-        try:
-            df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
-            df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
-            valid_df = df.dropna(subset=['spend', 'ctr'])
-            fig5 = px.scatter(
-                valid_df,
-                x='spend',
-                y='ctr',
-                title='Ad Spend vs CTR',
-                labels={'spend': 'Ad Spend', 'ctr': 'CTR (Click-Through Rate)'},
-                size='spend',  # Bubble size by ad spend
-                color='ctr'  # Color by CTR
-            )
-            fig_html_list.append(fig5.to_html(full_html=False))
-        except Exception as e:
-            fig_html_list.append(f"<div>mistake: {e}</div>")
-    else:
-        fig_html_list.append("<div>fail: data not find 'spend' or 'ctr' column。</div>")
+        df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
+        df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
+        valid_df = df.dropna(subset=['spend', 'ctr'])
+        fig5 = px.scatter(
+            valid_df,
+            x='spend',
+            y='ctr',
+            title='Ad Spend vs CTR',
+            labels={'spend': 'Ad Spend', 'ctr': 'CTR (Click-Through Rate)'},
+            size='spend',  # Bubble size by ad spend
+            color='ctr'  # Color by CTR
+        )
+        fig_html_list.append(fig5.to_html(full_html=False))
 
-    #chart 6
+    # Chart 6: Comment Count by Industry (Bar Chart)
     if 'industry' in df.columns and 'comments_count' in df.columns:
-        # Ensure the industry and comments count columns are valid
         df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
-
-        # Group by industry and calculate total comments
         comments_by_industry = df.groupby('industry')['comments_count'].sum().reset_index()
-
-        # Sort by comments count and generate the bar chart
         fig_comments_industry = px.bar(
             comments_by_industry.sort_values('comments_count', ascending=False),
             x='industry',
@@ -1820,11 +1128,9 @@ def handle_linkedin_data(df):
             labels={'industry': 'Industry', 'comments_count': 'Comment Count'}
         )
         fig_html_list.append(fig_comments_industry.to_html(full_html=False))
+
     return fig_html_list
-#----------------------------GRAPH VISUALIZATION----------------------------
 
-
-#download csv
 def download_csv(request):
     # Retrieve uploaded data and original file name from the session
     uploaded_data = request.session.get('uploaded_data', None)
@@ -1851,24 +1157,9 @@ def download_csv(request):
 
     return response
 
-
-
-#-------------------------------------------------------
-
-
-
-
-def  marketing_page(request):
+def marketing_page(request):
     testimonials = Testimonial.objects.all().order_by("-created_at")
-    return render(request, 'main/marketing_page.html' , {'testimonials' : testimonials})
-'''
-if username:
-            user_account = UserAccount.objects.get(username=username)
-            Testimonial.objects.create(user=user_account, content=content, rating=rating)
-            return redirect('marketing_page')  # Redirect back to marketing page
-
-    return render(request, "main/testimonial_page.html")
-'''
+    return render(request, 'main/marketing_page.html', {'testimonials': testimonials})
 
 def testimonial_page(request):
     if request.method == "POST":
@@ -1883,27 +1174,14 @@ def testimonial_page(request):
     
     return render(request, 'main/testimonial_page.html')    
         
-        
-
 def login_rate(request):
     return render(request, 'main/rate_to_login.html')
 
-
-#-------------------------------------------------------
-
-'''
-def manage_visibility(request):
-    if not request.user.is_authenticated:
-        return redirect('admin_login')
-    
-    data_items = DataItem.objects.filter(businessman = request.user)
-    return render(request, 'main/manage_visibility.html' , {'data_items' : data_items})
-'''
 def manage_visibility(request):
     is_authenticated = request.session.get('is_authenticated', False)
 
     if not is_authenticated:
-        return redirect('admin_login')
+        return redirect('login')
 
     username = request.session.get('username')
     user_account = UserAccount.objects.get(username=username)
@@ -1932,6 +1210,30 @@ def update_visibility(request, data_item_id):
     
     form = VisibilitySettingsForm(instance=data_item)
     return render(request, 'main/update_visibility.html', {'form': form, 'data_item': data_item})
+
+def scrape_content_creator(request):
+    return scrape_profile(request)
+
+def scrape_data_analyst(request):
+    return scrape_profile(request)
+
+def admin_login(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        # Use Django's built-in authentication system
+        user = authenticate(request, username=username, password=password)
+        if user is not None and user.is_staff:
+            login(request, user)
+            return redirect('dashboard')
+        else:
+            messages.error(request, "Invalid credentials or not an admin user!")
+    
+    return render(request, 'main/login.html')
+
+
+
 
 
 

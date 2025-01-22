@@ -16,22 +16,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from main import views  # Import views from the main app
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', lambda request: redirect('admin_login')),  # Redirect root to admin_login
-    path('', include('main.urls')), # Include all urls from the main app
-    
-
+    path('', lambda request: redirect('marketing_page')),  # Redirect root to marketing_page
+    path('', include('main.urls')),  # Include all urls from the main app
+    path('login/', views.login, name='login'),  # Ensure this points to the correct login view
 ]
 
 from django.conf import settings
 from django.conf.urls.static import static
 
-
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-
 
 # USE NGINX OR APACHE TO SERVE MEDIA FILES IN PRODUCTION
