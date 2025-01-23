@@ -44,6 +44,14 @@
             margin-bottom: 20px;
             outline: none;
         }
+        select {
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            width: 100%;
+            margin-bottom: 20px;
+            outline: none;
+        }
         button {
             background-color: #636ae8;
             color: #ffffff;
@@ -84,6 +92,16 @@
             <option value="instagram" selected>Instagram</option>
             <option value="tiktok">TikTok</option>
             <option value="linkedin">LinkedIn</option>
+        </select>
+
+        <!-- Graph Type Selection -->
+        <label for="graph_type">Select Graph Type:</label>
+        <select id="graph_type" name="graph_type" required>
+            <option value="followers_distribution">Followers Distribution</option>
+            <option value="interaction_by_account_type">Interaction by Account Type</option>
+            <option value="engagement_rate_distribution">Engagement Rate Distribution</option>
+            <option value="user_activity_heatmap">User Activity Heatmap</option>
+            <option value="likes_vs_comments">Likes vs Comments</option>
         </select>
 
         <!-- Submit Button -->
