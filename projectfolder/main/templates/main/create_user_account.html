@@ -6,10 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create User Account</title>
     <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        .input-wrapper input, .input-wrapper select {
+            width: 100%; /* Adjust the width of the input box */
+        }
+    </style>
 </head>
 <body class="main-container">
     <div class="create-account-container">
-        <h1>Create a New User Account</h1>
+        <h2>Create User Account</h2>
 
         <form method="POST" action="{% url 'create_user_account' %}">
             {% csrf_token %}
@@ -34,15 +39,19 @@
                     {% endif %}
                 </div>
             {% endfor %}
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label for="role">Role</label>
-                <select name="role" id="role" class="form-control">
-                    <option value="businessman">Businessman</option>
-                    <option value="data_analyst">Data Analyst</option>
-                    <option value="content_creator">Content Creator</option>
-                </select>
+            <div class="textbox">
+                <label class="label" for="role">Role</label>
+                <div class="input-wrapper">
+                    <select id="role" name="role" required>
+                        <option value="businessman">Businessman</option>
+                        <option value="data_analyst">Data Analyst</option>
+                        <option value="content_creator">Content Creator</option>
+                    </select>
+                </div>
             </div>
-            <button type="submit" class="button" style="width: auto; padding: 10px 20px; margin-top: 20px;">Create Account</button>
+            <div class="button-container">
+                <button class="button" type="submit">Create Account</button>
+            </div>
         </form>
 
         <a href="{% url 'login' %}" style="margin-top: 20px; display: inline-block;">Already have an Account? Login</a>
