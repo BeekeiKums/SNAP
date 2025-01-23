@@ -372,7 +372,7 @@
             <a href="#function">Functions</a>
             <a href="#resources">Resources</a>
             <a href="#testimonial">Testimonials</a>
-            <a href="{% url 'testimonial_page' %}">Submit Review</a>
+            <a href="{% url 'rate_to_login' %}">Submit Review</a>
             <a href="{% url 'login' %}">Sign In</a>  <!-- Ensure this points to the correct login URL -->
         </nav>
     </header>
@@ -420,30 +420,18 @@
     <div class="testimonials" id="testimonial">
         <h2>Testimonials</h2>
         <div class="testimonials-grid">
+            {% for testimonial in testimonials %}
             <div class="testimonial-card">
-                <img src="https://via.placeholder.com/50"  alt="User Image">
-                <h3>Mark Smith</h3>
-                <p>"This platform has completely changed the way we analyze data."</p>
-                <div class="stars">★★★★</div>
+                <img src="https://via.placeholder.com/50" alt="User Image">
+                <h3>{{ testimonial.name }}</h3>
+                <p>"{{ testimonial.testimonial }}"</p>
+                <div class="stars">
+                    {% for i in "12345" %}
+                        <span class="{% if i <= testimonial.rating %}active{% endif %}">&#9733;</span>
+                    {% endfor %}
+                </div>
             </div>
-            <div class="testimonial-card">
-                <img src="https://via.placeholder.com/50"  alt="User Image">
-                <h3>Jane Doe</h3>
-                <p>"A fantastic tool for understanding social networks."</p>
-                <div class="stars">★★★★</div>
-            </div>
-            <div class="testimonial-card">
-                <img src="https://via.placeholder.com/50"  alt="User Image">
-                <h3>Alex Johnson</h3>
-                <p>"Insightful and user-friendly."</p>
-                <div class="stars">★★★★</div>
-            </div>
-            <div class="testimonial-card">
-                <img src="https://via.placeholder.com/50"  alt="User Image">
-                <h3>Emily Clark</h3>
-                <p>"Highly recommend to all data analysts!"</p>
-                <div class="stars">★★★★</div>
-            </div>
+            {% endfor %}
         </div>
     </div>
 

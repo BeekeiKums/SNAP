@@ -1163,18 +1163,7 @@ def marketing_page(request):
     return render(request, 'main/marketing_page.html', {'testimonials': testimonials})
 
 def testimonial_page(request):
-    if request.method == "POST":
-        rating = request.POST.get("rating")
-        content = request.POST.get("content")
-        username = request.session.get("username")
-        
-        if username:
-            user_account = UserAccount.objects.get(user__username=username)
-            Testimonial.objects.create(user=user_account, content=content, rating=rating)
-            messages.success(request, "Testimonial submitted successfully!")
-            return redirect('marketing_page')
-    
-    return render(request, 'main/testimonial.html')
+    return render(request, 'main/testimonial_page.html')
 
 def login_rate(request):
     return render(request, 'main/rate_to_login.html')
@@ -1233,6 +1222,21 @@ def admin_login(request):
             messages.error(request, "Invalid credentials or not an admin user!")
     
     return render(request, 'main/login.html')
+
+def submit_testimonial(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        testimonial = request.POST.get('testimonial')
+        rating = request.POST.get('rating')
+
+        if name and testimonial and rating:
+            Testimonial.objects.create(name=name, testimonial=testimonial, rating=rating)
+            messages.success(request, 'Thank you for your testimonial!')
+            return redirect('testimonial_page')
+        else:
+            messages.error(request, 'All fields are required.')
+
+    return render(request, 'main/testimonial_page.html')
 
 
 

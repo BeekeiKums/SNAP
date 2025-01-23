@@ -24,7 +24,7 @@
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start; /* Align items to the top */
         }
 
         .sidebar a {
@@ -41,7 +41,7 @@
         }
 
         .logout {
-            margin-bottom: 20px; /* Adjust margin to position the logout button higher */
+            margin-top: auto; /* Pushes the logout link to the bottom */
         }
 
         .content {
@@ -61,23 +61,45 @@
             color: #555;
         }
     </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.menu-item').on('click', function() {
+                var url = $(this).data('url');
+                if (url) {
+                    window.location.href = url;
+                }
+            });
+        });
+    </script>
 </head>
 <body>
 
     <!-- Sidebar Navigation -->
     <div class="sidebar">
-        <div>
-            <a href="{% url 'category_list' %}">View Categories</a>
-            <a href="{% url 'create_category' %}">Create Category</a>
-            <a href="{% url 'create_user_account' %}">Create User Account</a>
-        </div>
-        <a href="{% url 'logout' %}" class="logout">Logout</a>  <!-- Ensure this points to the correct URL -->
+        <h2>Admin Dashboard</h2>
+        <a href="{% url 'category_list' %}" class="menu-item">View Categories</a>
+        <a href="{% url 'create_category' %}" class="menu-item">Create Category</a>
+        <a href="{% url 'create_user_account' %}" class="menu-item">Create User Account</a>
+        <a href="{% url 'view_user_accounts' %}" class="menu-item">View User Accounts</a>
+        <a href="{% url 'view_content_creator_accounts' %}" class="menu-item">View Content Creator Accounts</a>
+        <a href="{% url 'view_data_analyst_accounts' %}" class="menu-item">View Data Analyst Accounts</a> <!-- New link added -->
+        <a href="{% url 'view_businessman_accounts' %}" class="menu-item">View Businessman Accounts</a> <!-- New link added -->
+        <a href="{% url 'logout' %}" class="menu-item logout">Logout</a>
     </div>
 
     <!-- Page Content -->
     <div class="content">
-        <h2>Welcome to the Admin Dashboard</h2>
+        <h2>Welcome to the Admin Dashboard, {{ user.username }}</h2>
         <p>Use the navigation bar on the left to access different features.</p>
+        <div class="stats">
+            <h3>Statistics</h3>
+            <p>Total Users: {{ total_users }}</p>
+            <p>Total Categories: {{ total_categories }}</p>
+            <p>Total Content Creators: {{ total_content_creators }}</p>
+            <p>Total Data Analysts: {{ total_data_analysts }}</p>
+            <p>Total Businessmen: {{ total_businessmen }}</p>
+        </div>
     </div>
 
 </body>
