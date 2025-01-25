@@ -12,7 +12,7 @@ urlpatterns = [
     path('content-creator-dashboard/', views.content_creator_dashboard, name='content_creator_dashboard'),
     path('data-analyst-dashboard/', views.data_analyst_dashboard, name='data_analyst_dashboard'),
 
-
+    path('testimonial_page/', views.testimonial_page, name='testimonial_page'),
     path('create_businessman_profile/', views.create_businessman_account, name='create_profile'),
     path('view_profile_businessman/', views.view_profile_content_creator, name='view_profile_businessman'),
     
@@ -64,11 +64,9 @@ urlpatterns = [
     
     # Testimonial
     path('testimonial_page/', views.testimonial_page, name='testimonial_page'),
-    path('submit_testimonial/', views.submit_testimonial, name='submit_testimonial'),
     
     # Login rate
     path('login_rate/', views.login_rate, name='login_rate'),
-    path('rate_to_login/', views.login_rate, name='rate_to_login'),
     
     # Visibility
     path('visibility/', views.manage_visibility, name='manage_visibility'),

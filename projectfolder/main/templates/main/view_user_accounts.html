@@ -22,9 +22,9 @@
     }
     
     /* Sidebar Menu */
-    .sidebar {
+    .sidebar-menu {
         width: 250px;
-        background: #636ae8;
+        background: #ffffff;
         padding: 20px;
         border-right: 1px solid #e4e7ec;
         display: flex;
@@ -34,27 +34,33 @@
         overflow-y: auto; /* Scroll for long content */
     }
     
-    .sidebar h2 {
-        font-size: 22px;
-        color: white;
-        margin-bottom: 30px;
+    .sidebar-menu h2,
+    .sidebar-menu h3 {
+        font-size: 18px;
+        font-weight: bold;
+        color: #1d2939;
+        margin-bottom: 15px;
     }
     
-    .sidebar a {
-        padding: 15px 20px;
-        text-decoration: none;
+    .sidebar-menu-item {
         font-size: 16px;
-        color: white;
-        display: block;
-        transition: background-color 0.3s ease;
+        padding: 10px 15px;
+        color: #565d6d;
+        text-decoration: none;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
     }
     
-    .sidebar a:hover {
-        background-color: #575fcf;
+    .sidebar-menu-item:hover {
+        background: #e4e7ec;
     }
     
-    .logout {
-        margin-top: auto; /* Pushes the logout link to the bottom */
+    .sidebar-menu-item.selected {
+        background: #e4e7ec;
+        color: #636ae8;
+        font-weight: bold;
     }
     
     /* Content Container */
@@ -206,7 +212,7 @@
     
     /* Mobile Responsive */
     @media (max-width: 768px) {
-        .sidebar {
+        .sidebar-menu {
             width: 100%;
             height: auto;
             border-right: none;
@@ -233,14 +239,18 @@
 <body>
     <div class="main-container">
         <!-- Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar-menu">
             <h2>Admin Actions</h2>
-            <a href="{% url 'dashboard' %}">Dashboard</a>
-            <a href="{% url 'create_user_account' %}">Create User Account</a>
-            <a href="{% url 'view_user_accounts' %}" class="selected">View User Accounts</a>
-            <a href="{% url 'create_category' %}">Create Category</a>
-            <a href="{% url 'category_list' %}">View Categories</a>
-            <a href="{% url 'logout' %}" class="logout">Logout</a>
+            <a href="{% url 'create_user_account' %}" class="sidebar-menu-item selected">
+                <span>Users</span>
+            </a>
+            <a href="{% url 'create_category' %}" class="sidebar-menu-item">
+                <span>Categories</span>
+            </a>
+            <h3>Options</h3>
+            <a href="{% url 'dashboard' %}" class="sidebar-menu-item">
+                <span>Dashboard</span>
+            </a>
         </div>
 
         <!-- Content -->

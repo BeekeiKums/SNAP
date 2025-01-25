@@ -84,10 +84,6 @@
             width: 100%;
             margin-left: 250px; /* Adjust based on sidebar width */
         }
-
-        .menu-item {
-            color: #fff !important; /* Ensure link text is white */
-        }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -99,10 +95,11 @@
         <a href="#" class="menu-item active" data-url="{% url 'view_profile' %}">My Profile</a>
         <a href="#" class="menu-item" data-url="{% url 'upload_csv_or_xlsx' %}">Upload File</a>
         <a href="#" class="menu-item" data-url="{% url 'download_csv' %}">Download CSV</a>
-        <a href="#" class="menu-item" data-url="{% url 'scrape_profile' %}">Scrape Profile</a>
-        <a href="#" class="menu-item" data-url="{% url 'testimonial_page' %}">Submit Testimonial</a>
-        <a href="#" class="menu-item" data-url="{% url 'upload_and_view_charts' %}">Upload and View Charts</a>
-        <a href="{% url 'logout' %}" class="menu-item">Logout</a> <!-- Ensure this link is correctly displayed -->
+        <a href="#" class="menu-item" data-url="{% url 'view_data_analyst_accounts' %}">View User Accounts</a>
+        <a href="#" class="menu-item" data-url="{% url 'create_data_analyst_account' %}">Create Account</a>
+        <a href="{% url 'scrape_profile' %}" class="menu-item">Scrape Profile</a>
+        <a href="{% url 'testimonial_page' %}" class="menu-item">Submit Testimonial</a>
+        <a href="{% url 'logout' %}" class="menu-item">Logout</a>
     </div>
 
     <!-- Main Content Area -->
@@ -134,9 +131,7 @@
                 const url = $(this).data('url');
 
                 // Load content dynamically
-                if (url) {
-                    loadContent(url);
-                }
+                loadContent(url);
             });
 
             function loadContent(url) {

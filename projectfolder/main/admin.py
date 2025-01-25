@@ -4,7 +4,7 @@ from .models import Category, UserAccount, Data
 # Register the models
 admin.site.register(Category)
 admin.site.register(Data)
-admin.site.register(UserAccount)
+
 
 
 class UserAccountAdmin(admin.ModelAdmin):

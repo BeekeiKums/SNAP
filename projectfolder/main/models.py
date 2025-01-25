@@ -37,29 +37,26 @@ class Category(models.Model):
         return f"{self.name}"
 
 class UserAccount(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    username = models.CharField(max_length=150, unique=True)
-    role = models.CharField(max_length=50)
-    email = models.EmailField(unique=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
+    username = models.CharField(max_length=150, unique=True)  # Add username field
+    role = models.CharField(max_length=255)
+    email = models.EmailField()
 
     def __str__(self):
-        return self.username
+        return f"{self.user.username} - {self.role}"
 
 @receiver(post_save, sender=User)
 def create_user_account(sender, instance, created, **kwargs):
     if created:
         try:
             if not UserAccount.objects.filter(user=instance).exists():
-                UserAccount.objects.create(user=instance, username=instance.username, email=instance.email)
+                UserAccount.objects.create(user=instance, username=instance.username)
                 logger.info(f"UserAccount created for user: {instance.username}")
-                print(f"UserAccount created for user: {instance.username}")
             else:
                 logger.warning(f"UserAccount already exists for user: {instance.username}")
-                print(f"UserAccount already exists for user: {instance.username}")
         except Exception as e:
             logger.error(f"Error creating UserAccount for user: {instance.username} - {e}")
             logger.error(traceback.format_exc())
-            print(f"Error creating UserAccount for user: {instance.username} - {e}")
 
 @receiver(post_save, sender=User)
 def save_user_account(sender, instance, **kwargs):
@@ -67,14 +64,11 @@ def save_user_account(sender, instance, **kwargs):
         if hasattr(instance, 'useraccount'):
             instance.useraccount.save()
             logger.info(f"UserAccount saved for user: {instance.username}")
-            print(f"UserAccount saved for user: {instance.username}")
         else:
             logger.warning(f"UserAccount does not exist for user: {instance.username}")
-            print(f"UserAccount does not exist for user: {instance.username}")
     except Exception as e:
         logger.error(f"Error saving UserAccount for user: {instance.username} - {e}")
         logger.error(traceback.format_exc())
-        print(f"Error saving UserAccount for user: {instance.username} - {e}")
 
 class Businessman(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
@@ -141,10 +135,10 @@ class DataItem(models.Model):
 class Testimonial(models.Model):
     user = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
     content = models.TextField()
-    rating = models.PositiveIntegerField()
+    rating = models.PositiveIntegerField()  # 1 to 5 stars
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Testimonial by {self.user.username}"
+        return f"{self.user.user.username}'s Testimonial"
 
 
