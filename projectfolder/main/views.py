@@ -1047,90 +1047,103 @@ def handle_tiktok_data(df):
 
     return fig_html_list
 
+
+
+import matplotlib.pyplot as plt
+
 def handle_linkedin_data(df):
     fig_html_list = []
 
-    # Chart 1: Industry distribution (Pie Chart)
-    if 'industry' in df.columns:
-        industry_counts = df['industry'].dropna().value_counts().reset_index()
-        industry_counts.columns = ['industry', 'count']
-        fig1 = px.pie(
-            industry_counts,
-            names='industry',
-            values='count',
-            title='Industry distribution',
-            labels={'industry': 'industry', 'count': 'count'}
-        )
-        fig_html_list.append(fig1.to_html(full_html=False))
+    # Chart 1: Company distribution (Bar Chart)
+    if 'Company_Name' in df.columns:
+        company_counts = df['Company_Name'].value_counts().reset_index()  # 重置索引
+    company_counts.columns = ['Company Name', 'Count']  # 重命名列
+    fig1 = px.bar(
+        company_counts,
+        x='Company Name',  # 使用正确的列名
+        y='Count',
+        title='Company Distribution',
+        labels={'Company Name': 'Company Name', 'Count': 'Count'}
+    )
+    fig_html_list.append(fig1.to_html(full_html=False))
 
-    # Chart 2: Engagement Rate Distribution (Histogram)
-    if 'engagement_rate' in df.columns:
-        df['engagement_rate'] = pd.to_numeric(df['engagement_rate'], errors='coerce')
-        fig2 = px.histogram(
-            df,
-            x='engagement_rate',
-            title='Engagement Rate Distribution',
-            labels={'engagement_rate': 'Engagement Rate'},
-            nbins=20
+    # Chart 2: Class distribution (Bar Chart)
+    if 'Class' in df.columns:
+        class_counts = df['Class'].value_counts().reset_index()
+        class_counts.columns = ['Class', 'Count']
+        fig2 = px.bar(
+            class_counts,
+            x='Class',
+            y='Count',
+            title='Class Distribution',
+            labels={'Class': 'Class', 'Count': 'Count'}
         )
         fig_html_list.append(fig2.to_html(full_html=False))
 
-    # Chart 3: Likes Count by Industry (Bar Chart)
-    if 'industry' in df.columns and 'likes_count' in df.columns:
-        df['likes_count'] = pd.to_numeric(df['likes_count'], errors='coerce')
-        likes_by_industry = df.groupby('industry')['likes_count'].sum().reset_index()
-        fig_likes_industry = px.bar(
-            likes_by_industry.sort_values('likes_count', ascending=False),
-            x='industry',
-            y='likes_count',
-            title='Likes Count by Industry',
-            labels={'industry': 'Industry', 'likes_count': 'Likes Count'}
+    # Chart 3: Job distribution by location (Pie Chart)
+    if 'Location' in df.columns:
+        location_counts = df['Location'].value_counts().reset_index()
+        location_counts.columns = ['Location', 'Count']
+        fig3 = px.pie(
+            location_counts,
+            names='Location',
+            values='Count',
+            title='Job Distribution by Location',
         )
-        fig_html_list.append(fig_likes_industry.to_html(full_html=False))
+        fig_html_list.append(fig3.to_html(full_html=False))
 
-    # Chart 4: Job Title Distribution (Bar Chart)
-    if 'job_title' in df.columns:
-        job_counts = df['job_title'].dropna().value_counts().reset_index()
-        job_counts.columns = ['job_title', 'count']
+    # Chart 4: Skill demand distribution (Bar Chart)
+    skill_columns = [
+        'PYTHON', 'C++', 'JAVA', 'HADOOP', 'SCALA', 'FLASK', 'PANDAS',
+        'SPARK', 'NUMPY', 'PHP', 'SQL', 'MYSQL', 'CSS', 'MONGODB', 'NLTK',
+        'TENSORFLOW', 'LINUX', 'RUBY', 'JAVASCRIPT', 'DJANGO', 'REACT',
+        'REACTJS', 'AI', 'UI', 'TABLEAU', 'NODEJS', 'EXCEL', 'POWER BI',
+        'SELENIUM', 'HTML', 'ML'
+    ]
+    if set(skill_columns).intersection(df.columns):
+        skill_counts = {skill: df[skill].sum() for skill in skill_columns if skill in df.columns}
         fig4 = px.bar(
-            job_counts,
-            x='job_title',
-            y='count',
-            title='Job Title Distribution',
-            labels={'job_title': 'Job Title', 'count': 'Count'}
+            x=list(skill_counts.keys()),
+            y=list(skill_counts.values()),
+            title='Skill Demand Distribution',
+            labels={'x': 'Skill', 'y': 'Demand Count'}
         )
         fig_html_list.append(fig4.to_html(full_html=False))
 
-    # Chart 5: Ad Spend vs CTR (Scatter Plot)
-    if 'spend' in df.columns and 'ctr' in df.columns:
-        df['spend'] = pd.to_numeric(df['spend'], errors='coerce')
-        df['ctr'] = pd.to_numeric(df['ctr'], errors='coerce')
-        valid_df = df.dropna(subset=['spend', 'ctr'])
-        fig5 = px.scatter(
-            valid_df,
-            x='spend',
-            y='ctr',
-            title='Ad Spend vs CTR',
-            labels={'spend': 'Ad Spend', 'ctr': 'CTR (Click-Through Rate)'},
-            size='spend',  # Bubble size by ad spend
-            color='ctr'  # Color by CTR
+    # Chart 5: Followers count distribution by company (Bar Chart)
+    if 'LinkedIn_Followers' in df.columns and 'Company_Name' in df.columns:
+        followers_by_company = df.groupby('Company_Name')['LinkedIn_Followers'].sum().reset_index()
+        fig5 = px.bar(
+            followers_by_company.sort_values('LinkedIn_Followers', ascending=False),
+            x='Company_Name',
+            y='LinkedIn_Followers',
+            title='Followers Count by Company',
+            labels={'Company_Name': 'Company Name', 'LinkedIn_Followers': 'Followers Count'}
         )
         fig_html_list.append(fig5.to_html(full_html=False))
 
-    # Chart 6: Comment Count by Industry (Bar Chart)
-    if 'industry' in df.columns and 'comments_count' in df.columns:
-        df['comments_count'] = pd.to_numeric(df['comments_count'], errors='coerce')
-        comments_by_industry = df.groupby('industry')['comments_count'].sum().reset_index()
-        fig_comments_industry = px.bar(
-            comments_by_industry.sort_values('comments_count', ascending=False),
-            x='industry',
-            y='comments_count',
-            title='Comment Count by Industry',
-            labels={'industry': 'Industry', 'comments_count': 'Comment Count'}
-        )
-        fig_html_list.append(fig_comments_industry.to_html(full_html=False))
+    # Chart 6: Industry distribution (Pie Chart)
+    if 'Company_Name' in df.columns and 'LinkedIn_Followers' in df.columns:
+        # Group by 'Company_Name' and sum up 'LinkedIn_Followers'
+        followers_by_company = df.groupby('Company_Name')['LinkedIn_Followers'].sum()
+
+        # Create horizontal bar chart
+        followers_by_company.sort_values(ascending=False).plot(kind='barh', figsize=(10, 6), color='skyblue')
+
+        # Add title and labels
+        plt.title('LinkedIn Followers by Company')
+        plt.xlabel('LinkedIn Followers')
+        plt.ylabel('Company Name')
+
+        # Show the plot
+        plt.tight_layout()
+        plt.show()
 
     return fig_html_list
+
+
+
+
 
 def download_csv(request):
     # Retrieve uploaded data and original file name from the session
@@ -1163,18 +1176,7 @@ def marketing_page(request):
     return render(request, 'main/marketing_page.html', {'testimonials': testimonials})
 
 def testimonial_page(request):
-    if request.method == "POST":
-        rating = request.POST.get("rating")
-        content = request.POST.get("content")
-        username = request.session.get("username")
-        
-        if username:
-            user_account = UserAccount.objects.get(user__username=username)
-            Testimonial.objects.create(user=user_account, content=content, rating=rating)
-            messages.success(request, "Testimonial submitted successfully!")
-            return redirect('marketing_page')
-    
-    return render(request, 'main/testimonial.html')
+    return render(request, 'main/testimonial_page.html')
 
 def login_rate(request):
     return render(request, 'main/rate_to_login.html')
@@ -1233,6 +1235,21 @@ def admin_login(request):
             messages.error(request, "Invalid credentials or not an admin user!")
     
     return render(request, 'main/login.html')
+
+def submit_testimonial(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        testimonial = request.POST.get('testimonial')
+        rating = request.POST.get('rating')
+
+        if name and testimonial and rating:
+            Testimonial.objects.create(name=name, testimonial=testimonial, rating=rating)
+            messages.success(request, 'Thank you for your testimonial!')
+            return redirect('testimonial_page')
+        else:
+            messages.error(request, 'All fields are required.')
+
+    return render(request, 'main/testimonial_page.html')
 
 
 
