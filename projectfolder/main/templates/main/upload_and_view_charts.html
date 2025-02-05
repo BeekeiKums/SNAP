@@ -75,6 +75,16 @@
             border: none;
             margin-bottom: 20px;
         }
+        .heatmap-container {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .heatmap-container img {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -94,14 +104,28 @@
             <option value="linkedin">LinkedIn</option>
         </select>
 
-        <!-- Graph Type Selection -->
-        <label for="graph_type">Select Graph Type:</label>
-        <select id="graph_type" name="graph_type" required>
-            <option value="followers_distribution">Followers Distribution</option>
-            <option value="interaction_by_account_type">Interaction by Account Type</option>
-            <option value="engagement_rate_distribution">Engagement Rate Distribution</option>
-            <option value="user_activity_heatmap">User Activity Heatmap</option>
-            <option value="likes_vs_comments">Likes vs Comments</option>
+        <!-- Sponsored Selection -->
+        <label for="sponsored">Sponsored:</label>
+        <select id="sponsored" name="sponsored" required>
+            <option value="all" selected>All</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+        </select>
+
+        <!-- Post Type Selection -->
+        <label for="post_type">Post Type:</label>
+        <select id="post_type" name="post_type" required>
+            <option value="all" selected>All</option>
+            <option value="image">Image</option>
+            <option value="video">Video</option>
+        </select>
+
+        <!-- Time Duration Selection -->
+        <label for="time_duration">Time Duration:</label>
+        <select id="time_duration" name="time_duration" required>
+            <option value="month" selected>Month</option>
+            <option value="day_of_week">Day of the Week</option>
+            <option value="hour">Hour</option>
         </select>
 
         <!-- Submit Button -->
@@ -119,6 +143,7 @@
     {% else %}
     <p>No charts to display. Please upload a CSV file.</p>
     {% endif %}
+
 </div>
 </body>
 </html>

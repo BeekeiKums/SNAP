@@ -1,4 +1,6 @@
+import base64
 import csv
+import io
 import os
 import re
 from collections import defaultdict
@@ -17,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 from neomodel import db
 import plotly.express as px
 from plotly.io import to_html
+from sklearn.calibration import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
@@ -611,6 +614,10 @@ def dashboard_view(request):
         'headers': numeric_headers
     })
 
+from django.shortcuts import render
+import networkx as nx
+import plotly.graph_objects as go
+
 def create_or_view_visualization(request):
     try:
         # Retrieve uploaded data
@@ -880,6 +887,146 @@ def save_to_neo4j(graph, headers):
     driver.close()   
     logger.info("All data saved to Neo4j successfully.")
 
+
+from django.shortcuts import render
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+import calendar
+
+# Use the 'Agg' backend for Matplotlib
+import matplotlib
+matplotlib.use('Agg')
+
+def upload_and_view_charts(request):
+    fig_html_list = []
+    if request.method == 'POST' and 'csv_file' in request.FILES:
+        try:
+            csv_file = request.FILES['csv_file']
+            platform = request.POST.get('platform')
+            sponsored = request.POST.get('sponsored')
+            post_type = request.POST.get('post_type')
+            time_duration = request.POST.get('time_duration')
+            df = pd.read_csv(csv_file)
+
+            platform_handlers = {
+                'instagram': handle_instagram_data
+            }
+
+            handler = platform_handlers.get(platform)
+            if handler:
+                fig_html_list = handler(df, sponsored, post_type, time_duration)
+            else:
+                fig_html_list = [f"<div>Error: Unknown platform '{platform}'</div>"]
+        except Exception as e:
+            fig_html_list = [f"<div>Error processing the file: {str(e)}</div>"]
+
+    return render(request, 'main/upload_and_view_charts.html', {'fig_html_list': fig_html_list})
+
+def handle_instagram_data(csv_raw, sponsored, post_type, time_duration):
+    fig_html_list = []
+
+    # Clean the 'Likes' column by converting to numeric
+    csv_raw['Likes'] = pd.to_numeric(csv_raw['Likes'], errors='coerce')
+
+    # Handle missing values in 'Hour'
+    csv_raw = csv_raw.dropna(subset=['Hour'])
+
+    # Convert numeric month to month name
+    csv_raw['Month'] = csv_raw['Month'].apply(lambda x: calendar.month_name[int(x)])
+
+    # Filter data based on selections
+    if sponsored != 'all':
+        csv_raw = csv_raw[csv_raw['Sponsored'] == (sponsored == 'yes')]
+    if post_type != 'all':
+        csv_raw = csv_raw[csv_raw['Is Video'] == (post_type == 'video')]
+
+    # Define time categories and ordering
+    order_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    order_months = list(calendar.month_name)[1:]  # Skip the empty string at index 0
+    time_categories = {
+        "month": ("Month", 'Month', order_months),
+        "day_of_week": ("Day of the Week", 'Day of Upload', order_days),
+        "hour": ("Hour of the Day", 'Hour', None)
+    }
+
+    time_name, time_col, time_order = time_categories[time_duration]
+
+    # Define color palettes
+    color_palettes = [
+        'Set1', 'Set2', 'viridis', 'coolwarm', 'pastel',
+        'deep', 'muted', 'dark', 'colorblind', 'cubehelix'
+    ]
+    
+    # Generate plots for the selected category and time category
+    palette_idx = 0
+    palette = sns.color_palette(color_palettes[palette_idx % len(color_palettes)])
+    palette_idx += 1
+
+    # Ensure the time column is correctly ordered if necessary
+    if time_order:
+        csv_raw.loc[:, time_col] = pd.Categorical(csv_raw[time_col], categories=time_order, ordered=True)
+
+    # Create count plot for the selected category and time feature
+    count_title = f'Number of Posts by {time_name}'
+    count_xlabel = time_name
+    count_ylabel = 'Number of Posts'
+    count_plot_html = create_countplot(csv_raw, time_col, count_title, count_xlabel, count_ylabel, order=time_order, palette=palette)
+    fig_html_list.append(count_plot_html)
+
+    # Create engagement plot (likes vs comments) for the selected category and time feature
+    grouped_data = csv_raw.groupby(time_col, observed=True)[['Likes', 'Comments']].mean().reset_index()
+    engagement_title = f'Average Engagement by {time_name}'
+    engagement_xlabel = time_name
+    engagement_ylabel = 'Average Engagement'
+    engagement_plot_html = create_engagement_plot(grouped_data, time_col, engagement_title, engagement_xlabel, engagement_ylabel)
+    fig_html_list.append(engagement_plot_html)
+
+    return fig_html_list
+
+def create_engagement_plot(data, x, title, xlabel, ylabel, ax=None):
+    """
+    Creates a line plot comparing likes and comments over time for engagement analysis.
+    """
+    fig, ax = plt.subplots(figsize=(12, 6)) if ax is None else (fig, ax)
+    sns.lineplot(x=x, y='Likes', data=data, label='Likes', marker='o', ax=ax)
+    sns.lineplot(x=x, y='Comments', data=data, label='Comments', marker='o', ax=ax)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.legend()
+    ax.grid()
+    plot_html = plot_to_html(fig)
+    plt.close(fig)
+    return plot_html
+
+def create_countplot(data, time_col, title, xlabel, ylabel, order=None, palette="Set1"):
+    """
+    Creates a count plot for a given time column and returns the plot as HTML.
+    """
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.countplot(x=time_col, data=data, ax=ax, order=order, palette=palette)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.xticks(rotation=45)
+    plot_html = plot_to_html(fig)
+    plt.close(fig)
+    return plot_html
+
+def plot_to_html(fig):
+    """
+    Convert a Matplotlib figure to an HTML img tag with responsive styling.
+    """
+    buffer = BytesIO()
+    fig.savefig(buffer, format='png', bbox_inches='tight', dpi=150)  # Adjust dpi for better resolution
+    buffer.seek(0)
+    img_str = base64.b64encode(buffer.read()).decode('utf-8')
+    buffer.close()
+    return f"<img src='data:image/png;base64,{img_str}' style='max-width: 100%; height: auto;'/>"
+'''
 def upload_and_view_charts(request):
     fig_html_list = []
     if request.method == 'POST' and 'csv_file' in request.FILES:
@@ -1047,7 +1194,7 @@ def handle_tiktok_data(df):
 
     return fig_html_list
 
-
+'''
 
 import matplotlib.pyplot as plt
 
@@ -1253,6 +1400,260 @@ def submit_testimonial(request):
 
 
 
+from django.shortcuts import render
+from django.http import JsonResponse, HttpResponse
+import pandas as pd
+import networkx as nx
+from neo4j import GraphDatabase
+import os
+import json
+
+def preds(request):
+    return render(request, 'main/preds.html')  
+
+import os
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+@csrf_exempt
+def save_csv(request):
+    if request.method == 'POST':
+        csv_content = request.POST.get('csvContent')
+        if csv_content:
+            # Determine the next available filename
+            directory = os.path.join(settings.BASE_DIR, 'media', 'downloads')
+            os.makedirs(directory, exist_ok=True)
+            existing_files = os.listdir(directory)
+            next_number = len(existing_files) + 1
+            filename = f'user{next_number}.csv'
+            filepath = os.path.join(directory, filename)
+
+            # Save the CSV content to the file
+            with open(filepath, 'w', newline='', encoding='utf-8') as file:
+                file.write(csv_content)
+
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'error': 'No CSV content provided'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+# -----------------------------------------------------------------------------------
+
+# ------------- the better looking neo4j visualizer -------------------------------
+import logging
+import json
+from django.shortcuts import render
+from neo4j import GraphDatabase
+import networkx as nx
+
+# Neo4j connection details
+NEO4J_URI = "bolt://localhost:7687"
+NEO4J_USER = "neo4j"
+NEO4J_PASSWORD = "graphbeek"
+
+def graph_view(request):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+    with driver.session() as session:
+        # Fetch nodes and edges together
+        result = session.run("MATCH p=()-[r:CO_OCCURS_WITH]->() RETURN p")
+        
+        nodes = []
+        edges = []
+        node_ids = set()
+        
+        for record in result:
+            for node in record["p"].nodes:
+                if node.id not in node_ids:
+                    nodes.append({"id": node.id, "label": node["name"]})
+                    node_ids.add(node.id)
+            for rel in record["p"].relationships:
+                edges.append({"from": rel.start_node.id, "to": rel.end_node.id})
+
+    # Create a NetworkX graph from the nodes and edges for centrality calculations
+    G = nx.Graph()
+    for node in nodes:
+        G.add_node(node['id'])
+    for edge in edges:
+        G.add_edge(edge['from'], edge['to'])
+
+    # Calculate centrality measures
+    betweenness = nx.betweenness_centrality(G)
+    try:
+        eigenvector = nx.eigenvector_centrality(G, max_iter=1000)
+    except nx.PowerIterationFailedConvergence:
+        eigenvector = {node: 0 for node in G.nodes}
+    degree = nx.degree_centrality(G)
+    closeness = nx.closeness_centrality(G)
+
+    # Update nodes with centrality measures
+    for node in nodes:
+        node['betweenness'] = betweenness[node['id']]
+        node['eigenvector'] = eigenvector[node['id']]
+        node['degree'] = degree[node['id']]
+        node['closeness'] = closeness[node['id']]
+
+    # Ensure all nodes referenced in edges are included in the nodes array
+    for edge in edges:
+        if edge['from'] not in node_ids:
+            nodes.append({"id": edge['from'], "label": str(edge['from']), "betweenness": 0, "eigenvector": 0, "degree": 0, "closeness": 0})
+            node_ids.add(edge['from'])
+        if edge['to'] not in node_ids:
+            nodes.append({"id": edge['to'], "label": str(edge['to']), "betweenness": 0, "eigenvector": 0, "degree": 0, "closeness": 0})
+            node_ids.add(edge['to'])
+
+    # Sort nodes by betweenness centrality and get top 10
+    top_10_nodes = sorted(nodes, key=lambda x: x['betweenness'], reverse=True)[:10]
+
+    context = {
+        "nodes": json.dumps(nodes),  # Serialize nodes to JSON
+        "edges": json.dumps(edges),  # Serialize edges to JSON
+        "centrality_results": top_10_nodes
+    }
+
+    #print(context)  # Debug statement to print the context
+
+    return render(request, 'main/graph.html', context)
+
+import os
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import default_storage
+
+
+@csrf_exempt
+def save_visualization(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        image = request.FILES['image']
+        diag_dir = os.path.join('diag')
+        if not os.path.exists(diag_dir):
+            os.makedirs(diag_dir)
+        
+        # Determine the next available filename
+        existing_files = os.listdir(diag_dir)
+        next_number = len(existing_files) + 1
+        filename = f'vis{next_number}.png'
+        filepath = os.path.join(diag_dir, filename)
+        
+        with default_storage.open(filepath, 'wb+') as destination:
+            for chunk in image.chunks():
+                destination.write(chunk)
+        
+        return JsonResponse({'status': 'success', 'filename': filename})
+    return JsonResponse({'status': 'error'}, status=400)
 
 
 
+# -------------------- Implementing Machine Learning for Instagram ---------------------------------
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+from datetime import datetime
+
+from sklearn.ensemble import GradientBoostingRegressor
+
+def predict_engagement(request):
+    if request.method == 'POST':
+        # Load the data
+        df = pd.read_csv('C:/Users/Welcome/Desktop/Predictest/my-django-app/josh_edit.csv')
+
+        # Preprocess the data
+        df['Is Video'] = df['Is Video'].fillna(False).astype(int)  # Fill NaN and convert boolean to int
+        df.dropna(subset=['Likes', 'Comments'], inplace=True)  # Drop rows with missing target values
+
+        # Handle NaN values in features
+        df.fillna({
+            'Day': 0,
+            'Month': 0,
+            'Year': 0,
+            'Hour': 0,
+            'Video Duration': 0
+        }, inplace=True)
+
+        # Extract date and hour from the request
+        selected_date = request.POST.get('date')
+        selected_hour = request.POST.get('hour')
+
+        if not selected_date or selected_hour is None:
+            return render(request, 'main/ml_predictions.html', {'error': 'Please provide both date and hour.'})
+
+        selected_hour = int(selected_hour)
+
+        # Convert selected date to day of the week
+        date_object = datetime.strptime(selected_date, '%Y-%m-%d')
+        day_of_week = date_object.day  # Extract the day from the date
+
+        # Features and target variables
+        X = df[['Day', 'Month', 'Year', 'Hour', 'Is Video', 'Video Duration']]
+        y_likes = df['Likes']
+        y_comments = df['Comments']
+
+        # Normalize the features
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        # Split the data
+        X_train, X_test, y_train_likes, y_test_likes = train_test_split(X_scaled, y_likes, test_size=0.2, random_state=42)
+        _, _, y_train_comments, y_test_comments = train_test_split(X_scaled, y_comments, test_size=0.2, random_state=42)
+
+        # Hyperparameter tuning for Likes using Gradient Boosting Regressor
+        param_grid_likes = {
+            'n_estimators': [100, 200, 300],
+            'learning_rate': [0.01, 0.1, 0.2],
+            'max_depth': [3, 5, 7]
+        }
+        model_likes = GridSearchCV(GradientBoostingRegressor(random_state=42), param_grid_likes, cv=5)
+        model_likes.fit(X_train, y_train_likes)
+
+        # Hyperparameter tuning for Comments using Gradient Boosting Regressor
+        param_grid_comments = {
+            'n_estimators': [100, 200, 300],
+            'learning_rate': [0.01, 0.1, 0.2],
+            'max_depth': [3, 5, 7]
+        }
+        
+        model_comments = GridSearchCV(GradientBoostingRegressor(random_state=42), param_grid_comments, cv=5)
+        model_comments.fit(X_train, y_train_comments)
+
+        # Make predictions
+        predictions_likes = model_likes.predict(X_test)
+        predictions_comments = model_comments.predict(X_test)
+
+        # Calculate accuracy (mean squared error)
+        mse_likes = mean_squared_error(y_test_likes, predictions_likes)
+        mse_comments = mean_squared_error(y_test_comments, predictions_comments)
+
+        # Prepare results for rendering
+        results = {
+            'videos_with_hashtags': {
+                'predicted_likes': predictions_likes.tolist(),
+                'predicted_comments': predictions_comments.tolist(),
+                'mse_likes': mse_likes,
+                'mse_comments': mse_comments
+            },
+            'images_with_hashtags': {
+                'predicted_likes': predictions_likes.tolist(),
+                'predicted_comments': predictions_comments.tolist(),
+                'mse_likes': mse_likes,
+                'mse_comments': mse_comments
+            },
+            'videos_without_hashtags': {
+                'predicted_likes': predictions_likes.tolist(),
+                'predicted_comments': predictions_comments.tolist(),
+                'mse_likes': mse_likes,
+                'mse_comments': mse_comments
+            },
+            'images_without_hashtags': {
+                'predicted_likes': predictions_likes.tolist(),
+                'predicted_comments': predictions_comments.tolist(),
+                'mse_likes': mse_likes,
+                'mse_comments': mse_comments
+            }
+        }
+
+        # Create a list of hours for the template
+        hours = list(range(24))
+
+        return render(request, 'main/ml_predictions.html', {'results': results, 'hours': hours})
+
+    # If GET request, render the form
+    return render(request, 'main/ml_predictions.html')

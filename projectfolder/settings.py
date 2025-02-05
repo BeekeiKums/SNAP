@@ -14,6 +14,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ...existing code...
 
+# Ensure there are no settings limiting the number of rows
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

@@ -22,6 +22,8 @@ urlpatterns = [
     path('', lambda request: redirect('marketing_page')),  # Redirect root to marketing_page
     path('', include('main.urls')),  # Include all urls from the main app
     path('login/', views.login, name='login'),  # Ensure this points to the correct login view
+    path('preds/', views.preds, name='preds'),
+    path('predict_engagement/', views.predict_engagement, name='predict_engagement'),
 ]
 
 from django.conf import settings

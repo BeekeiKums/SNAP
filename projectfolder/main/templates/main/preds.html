@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            margin-top: 20px;
+        }
+        #controls {
+            margin: 20px auto;
+            text-align: center;
+            max-width: 800px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #controls label {
+            display: inline-block;
+            margin: 5px;
+            cursor: pointer;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        #controls label:hover {
+            background-color: #45a049;
+        }
+        #controls input[type="checkbox"] {
+            display: none;
+        }
+        #controls input[type="checkbox"] + span {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            background-color: #f2f2f2;
+            vertical-align: middle;
+            text-align: center;
+            line-height: 20px;
+            font-size: 16px;
+            color: transparent;
+        }
+        #controls input[type="checkbox"]:checked + span {
+            background-color: #4CAF50;
+            color: white;
+            content: '✔';
+        }
+        #csvTable {
+            margin: 20px auto;
+            max-width: 90%;
+            overflow-x: auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #csvTable table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #csvTable th, #csvTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #csvTable th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .row-checkbox {
+            width: 20px;
+            height: 20px;
+        }
+        button {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input[type="file"] {
+            display: block;
+            margin: 20px auto;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload and View CSV</h1>
+    <input type="file" id="csvFileInput" accept=".csv" />
+    <div id="controls"></div>
+    <button id="removeRowsButton">Remove Selected Rows</button>
+    <button id="saveCsvButton">Save CSV</button>
+    <div id="csvTable"></div>
+    <div id="filters">
+        <label>
+            <input type="checkbox" id="filterImages" />
+            <span></span> Images
+        </label>
+        <label>
+            <input type="checkbox" id="filterVideos" />
+            <span></span> Videos
+        </label>
+        <label>
+            <input type="checkbox" id="filterSponsored" />
+            <span></span> Sponsored
+        </label>
+        <label>
+            <input type="checkbox" id="filterNonSponsored" />
+            <span></span> Non-Sponsored
+        </label>
+    </div>
+
+    <script>
+        let csvData = [];
+        let columnVisibility = {};
+
+        document.getElementById('csvFileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    complete: function(results) {
+                        processCSVData(results.data);
+                    },
+                    header: true,
+                    skipEmptyLines: true, // Ensure empty lines are skipped
+                    dynamicTyping: true // Automatically typecast data
+                });
+            }
+        });
+
+        function processCSVData(data) {
+            csvData = data.map((row, index) => {
+                const newRow = { 'Post number': index + 1, ...row };
+                if (newRow['timestamp']) {
+                    const date = new Date(newRow['timestamp']);
+                    newRow['Day'] = String(date.getDate()).padStart(2, '0');
+                    newRow['Day of Upload'] = date.toLocaleString('en-US', { weekday: 'long' });
+                    newRow['Month'] = String(date.getMonth() + 1).padStart(2, '0');
+                    newRow['Year'] = date.getFullYear();
+                    newRow['Hour'] = String(date.getHours()).padStart(2, '0');
+                }
+                return newRow;
+            });
+
+            // Restructure columns
+            csvData = csvData.map(row => {
+                return {
+                    'Post Number': row['Post number'],
+                    'Owner Username': row['owner_username'],
+                    'Verified': row['is_verified'],
+                    'Followers': row['followers'],
+                    'Shortcode': row['shortcode'],
+                    'Timestamp': row['timestamp'],
+                    'Day': row['Day'],
+                    'Month': row['Month'],
+                    'Year': row['Year'],
+                    'Day of Upload': row['Day of Upload'],
+                    'Hour': row['Hour'],
+                    'Likes': row['likes'],
+                    'Title': row['title'],
+                    'Caption': row['caption'],
+                    'Comments': row['comments'],
+                    'Hashtags': row['hashtags'],
+                    'Is Video': row['is_video'],
+                    'Video Url': row['video_url'],
+                    'Video Duration': row['video_duration'],
+                    'Image Url': row['image_url'],
+                    'Sponsored': row['is_sponsored']
+                };
+            });
+
+            // Initialize column visibility
+            if (Object.keys(columnVisibility).length === 0) {
+                columnVisibility = Object.keys(csvData[0]).reduce((acc, key) => {
+                    acc[key] = true;
+                    return acc;
+                }, {});
+            }
+
+            displayTable(csvData);
+            createCheckboxes(csvData);
+        }
+
+        function displayTable(data) {
+            const table = document.createElement('table');
+            table.border = 1;
+            const headerRow = document.createElement('tr');
+            const selectAllTh = document.createElement('th');
+            const selectAllCheckbox = document.createElement('input');
+            selectAllCheckbox.type = 'checkbox';
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.row-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
+            selectAllTh.appendChild(selectAllCheckbox);
+            headerRow.appendChild(selectAllTh);
+
+            Object.keys(data[0]).forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key;
+                th.dataset.column = key;
+                th.style.display = columnVisibility[key] ? '' : 'none';
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            data.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                const checkboxTd = document.createElement('td');
+                const rowCheckbox = document.createElement('input');
+                rowCheckbox.type = 'checkbox';
+                rowCheckbox.className = 'row-checkbox';
+                rowCheckbox.dataset.rowIndex = rowIndex;
+                checkboxTd.appendChild(rowCheckbox);
+                tr.appendChild(checkboxTd);
+
+                Object.keys(row).forEach((key, index) => {
+                    const td = document.createElement('td');
+                    td.textContent = row[key];
+                    td.dataset.column = key;
+                    td.style.display = columnVisibility[key] ? '' : 'none';
+                    tr.appendChild(td);
+                });
+                table.appendChild(tr);
+            });
+
+            const csvTable = document.getElementById('csvTable');
+            csvTable.innerHTML = '';
+            csvTable.appendChild(table);
+        }
+
+        function createCheckboxes(data) {
+            const controls = document.getElementById('controls');
+            controls.innerHTML = '';
+            Object.keys(data[0]).forEach(key => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = columnVisibility[key];
+                checkbox.dataset.column = key;
+                checkbox.addEventListener('change', function() {
+                    toggleColumn(key, checkbox.checked);
+                });
+                const span = document.createElement('span');
+                span.textContent = '✔';
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                label.appendChild(document.createTextNode(key));
+                controls.appendChild(label);
+            });
+        }
+
+        function toggleColumn(column, show) {
+            columnVisibility[column] = show;
+            const cells = document.querySelectorAll(`[data-column="${column}"]`);
+            cells.forEach(cell => {
+                cell.style.display = show ? '' : 'none';
+            });
+        }
+
+        document.getElementById('removeRowsButton').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+            const rowsToRemove = Array.from(checkboxes).map(checkbox => parseInt(checkbox.dataset.rowIndex));
+            rowsToRemove.sort((a, b) => b - a).forEach(rowIndex => {
+                csvData.splice(rowIndex, 1);
+            });
+            applyFilters();
+        });
+
+        document.getElementById('saveCsvButton').addEventListener('click', function() {
+            const visibleColumns = Object.keys(columnVisibility).filter(key => columnVisibility[key]);
+            const filteredData = applyFilters(); // Use the filtered data
+
+            const csvContent = Papa.unparse(filteredData.map(row => {
+                const newRow = {};
+                visibleColumns.forEach(key => {
+                    newRow[key] = row[key];
+                });
+                return newRow;
+            }));
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'filtered_data.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        document.getElementById('filterImages').addEventListener('change', function() {
+            applyFilters();
+        });
+
+        document.getElementById('filterVideos').addEventListener('change', function() {
+            applyFilters();
+        });
+
+        document.getElementById('filterSponsored').addEventListener('change', function() {
+            applyFilters();
+        });
+
+        document.getElementById('filterNonSponsored').addEventListener('change', function() {
+            applyFilters();
+        });
+
+        function applyFilters() {
+            let filteredData = csvData;
+
+            if (document.getElementById('filterImages').checked) {
+                filteredData = filteredData.filter(row => row['Is Video'] === 'False');
+            }
+
+            if (document.getElementById('filterVideos').checked) {
+                filteredData = filteredData.filter(row => row['Is Video'] === 'True');
+            }
+
+            if (document.getElementById('filterSponsored').checked) {
+                filteredData = filteredData.filter(row => row['Sponsored'] === 'True');
+            }
+
+            if (document.getElementById('filterNonSponsored').checked) {
+                filteredData = filteredData.filter(row => row['Sponsored'] === 'False');
+            }
+
+            displayTable(filteredData);
+            return filteredData; // Return the filtered data for saving
+        }
+    </script>
+</body>
+</html>

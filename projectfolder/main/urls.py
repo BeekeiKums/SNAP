@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views, neoviews
+from .views import save_csv
 
 urlpatterns = [
     path('marketing_page/', views.marketing_page, name='marketing_page'),  # Updated URL pattern
@@ -74,4 +75,17 @@ urlpatterns = [
     
     # Charts
     path('upload_and_view_charts/', views.upload_and_view_charts, name='upload_and_view_charts'),
+
+    # To add and remove rows and columns
+    path('save_csv/', views.save_csv, name='save_csv'),
+    path('preds/', views.preds, name='preds'),
+
+    # To view the correct neo4j graph
+    path('graph_view/', views.graph_view, name='graph_view'),
+    path('save-visualization/', views.save_visualization, name='save_visualization'),
+    path('upload_and_view_charts/', views.upload_and_view_charts, name='upload_and_view_charts'),  # Add the new URL pattern
+
+    # To view the Machine Learning Algo of Social Media
+    path('predict_engagement/', views.predict_engagement, name='predict_engagement'),
+
 ]
