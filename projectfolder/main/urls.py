@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views, neoviews
 from .views import save_csv
+from .views import graph_view
 
 urlpatterns = [
     path('marketing_page/', views.marketing_page, name='marketing_page'),  # Updated URL pattern
@@ -53,7 +54,7 @@ urlpatterns = [
     path('test_predictive_models/', views.test_predictive_models, name='test_predictive_models'),
     
     # Scrape
-    path('scrape/', views.scrape_profile, name='scrape_profile'),
+    path('scrape_profile/', views.scrape_profile, name='scrape_profile'),
     path('login_instagram/', views.login_instagram, name='login_instagram'),
     path('scrape_content_creator/', views.scrape_content_creator, name='scrape_content_creator'),
     path('scrape_data_analyst/', views.scrape_data_analyst, name='scrape_data_analyst'),
@@ -84,8 +85,13 @@ urlpatterns = [
     path('graph_view/', views.graph_view, name='graph_view'),
     path('save-visualization/', views.save_visualization, name='save_visualization'),
     path('upload_and_view_charts/', views.upload_and_view_charts, name='upload_and_view_charts'),  # Add the new URL pattern
+    
+    
+
 
     # To view the Machine Learning Algo of Social Media
     path('predict_engagement/', views.predict_engagement, name='predict_engagement'),
 
+    # Admin login
+    path('admin_login/', views.admin_login, name='admin_login'),
 ]

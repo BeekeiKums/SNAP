@@ -89,21 +89,21 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <h2>Dashboard</h2>
-        <a href="{% url 'manage_visibility' %}">Visibility</a>
         <a href="#" class="menu-item active" data-url="{% url 'view_profile' %}">My Profile</a>
-        <!-- Upload the Insta File to view the different graphs -->
+        <a href="#" class="menu-item" data-url="{% url 'manage_visibility' %}">Visibility</a>
         <a href="#" class="menu-item" data-url="{% url 'upload_and_view_charts' %}">Upload File</a>
         <a href="#" class="menu-item" data-url="{% url 'view_businessman_accounts' %}">View User Accounts</a>
         <a href="#" class="menu-item" data-url="{% url 'create_businessman_account' %}">Create Account</a>
-        <!-- Login with actual instagram credentials and scrape profile, ignore this for businessman -->
-        <a href="{% url 'scrape_profile' %}" class="menu-item">Scrape Profile</a>
-        <!-- Add or remove columns from the uploaded csv file (the one you scraped) -->
-        <a href="{% url 'preds' %}"> Edit Rows/Columns</a>
-        <!-- View the neo4j visualization of hashtags and their connections -->
-        <a href="{% url 'graph_view' %}"> View Neo4j Visualization</a>
-        <!-- Predict number of likes and comments based on input date and input hour of day, use diff model for businessman -->
+        
+        <a href="#" class="menu-item" data-url="{% url 'scrape_profile' %}">Scrape Profile</a>
+        <a href="#" class="menu-item" data-url="{% url 'testimonial_page' %}">Submit Testimonial</a>
+
+        <a href="{% url 'preds' %}">Edit Rows/Columns</a>
+        <a href="{% url 'graph_view' %}">View Neo4j Visualization</a>
         <a href="{% url 'predict_engagement' %}">Social Media Prediction Model</a>
-        <a href="{% url 'testimonial_page' %}" class="menu-item">Submit Testimonial</a>
+
+
+
         <a href="{% url 'logout' %}" class="menu-item">Logout</a>
     </div>
 

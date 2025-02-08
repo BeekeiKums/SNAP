@@ -1,134 +1,82 @@
+<!-- filepath: /C:/Users/Welcome/Desktop/FinML/FinML/FinMLapp/templates/index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ML Predictions</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        h1 {
-            color: #333;
-        }
-        form {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #fff;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        label {
-            display: block;
-            margin: 10px 0 5px;
-        }
-        input[type="date"], input[type="number"], select {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            padding: 10px 15px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-        .results {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fff;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style>
+    <title>Predict Likes and Comments</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Predicted Engagement Metrics</h1>
-    
-    <form method="POST" action="{% url 'predict_engagement' %}">
+    <h1>Predict Likes and Comments</h1>
+    <form id="prediction-form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        
-        <label for="category">Select Category:</label>
-        <select id="category" name="category" required>
-            <option value="videos_with_hashtags">Videos with Hashtags</option>
-            <option value="images_with_hashtags">Images with Hashtags</option>
-            <option value="videos_without_hashtags">Videos without Hashtags</option>
-            <option value="images_without_hashtags">Images without Hashtags</option>
-        </select>
+        <label for="csv_file">Upload CSV File:</label>
+        <input type="file" id="csv_file" name="csv_file" accept=".csv"><br><br>
 
-        <label for="date">Select Date:</label>
-        <input type="date" id="date" name="date" required>
-        
-        <label for="hour">Select Hour:</label>
-        <input type="number" id="hour" name="hour" min="0" max="23" required>
-        
-        <button type="submit">Get Predictions</button>
+        <label for="date">Date:</label>
+        <input type="date" id="date" name="date" required><br><br>
+
+        <label for="hour">Hour (00-23):</label>
+        <input type="number" id="hour" name="hour" min="0" max="23" required><br><br>
+
+        <label for="post_type">Post Type:</label>
+        <select id="post_type" name="post_type" required>
+            <option value="Image with Hashtags">Image with Hashtags</option>
+            <option value="Video with Hashtags">Video with Hashtags</option>
+            <option value="Image without Hashtags">Image without Hashtags</option>
+            <option value="Video without Hashtags">Video without Hashtags</option>
+        </select><br><br>
+
+        <button type="submit">Predict</button>
     </form>
 
-    {% if results %}
-        <div class="results">
-            <h2>Predicted Engagement Metrics by Category</h2>
-            <table>
-                <tr>
-                    <th>Category</th>
-                    <th>Predicted Likes</th>
-                    <th>Predicted Comments</th>
-                    <th>Likes MSE</th>
-                    <th>Comments MSE</th>
-                </tr>
-                <tr>
-                    <td>Videos with Hashtags</td>
-                    <td>{{ results.videos_with_hashtags.predicted_likes }}</td>
-                    <td>{{ results.videos_with_hashtags.predicted_comments }}</td>
-                    <td>{{ results.videos_with_hashtags.mse_likes }}</td>
-                    <td>{{ results.videos_with_hashtags.mse_comments }}</td>
-                </tr>
-                <tr>
-                    <td>Images with Hashtags</td>
-                    <td>{{ results.images_with_hashtags.predicted_likes }}</td>
-                    <td>{{ results.images_with_hashtags.predicted_comments }}</td>
-                    <td>{{ results.images_with_hashtags.mse_likes }}</td>
-                    <td>{{ results.images_with_hashtags.mse_comments }}</td>
-                </tr>
-                <tr>
-                    <td>Videos without Hashtags</td>
-                    <td>{{ results.videos_without_hashtags.predicted_likes }}</td>
-                    <td>{{ results.videos_without_hashtags.predicted_comments }}</td>
-                    <td>{{ results.videos_without_hashtags.mse_likes }}</td>
-                    <td>{{ results.videos_without_hashtags.mse_comments }}</td>
-                </tr>
-                <tr>
-                    <td>Images without Hashtags</td>
-                    <td>{{ results.images_without_hashtags.predicted_likes }}</td>
-                    <td>{{ results.images_without_hashtags.predicted_comments }}</td>
-                    <td>{{ results.images_without_hashtags.mse_likes }}</td>
-                    <td>{{ results.images_without_hashtags.mse_comments }}</td>
-                </tr>
-            </table>
-        </div>
-    {% endif %}
+    <h2>Predicted Results</h2>
+    <p>Predicted Likes: <span id="predicted-likes"></span></p>
+    <p>Predicted Comments: <span id="predicted-comments"></span></p>
+
+    
+        <h1>Dataset Preview</h1>
+        {{ df_preview|safe }}
+
+        <h1>Model Performance Metrics</h1>
+        <p>Likes R² Score: {{ likes_r2 }}</p>
+        <p>Comments R² Score: {{ comments_r2 }}</p>
+        <p>Likes MAE: {{ likes_mae }}</p>
+        <p>Comments MAE: {{ comments_mae }}</p>
+        <p>Likes MSE: {{ likes_mse }}</p>
+        <p>Comments MSE: {{ comments_mse }}</p>
+
+        <h1>Sample of Actual vs Predicted Values</h1>
+        {{ results_df|safe }}
+
+        <h1>Top 5 Most Important Features</h1>
+        {{ feature_importance|safe }}
+
+        <h1>Last 10 Posts</h1>
+        {{ last_10_posts|safe }}
+    
+
+    <script>
+    $(document).ready(function() {
+        $('#prediction-form').on('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            $.ajax({
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.error) {
+                        alert(response.error);
+                    } else {
+                        $('#predicted-likes').text(response.likes_pred);
+                        $('#predicted-comments').text(response.comments_pred);
+                    }
+                }
+            });
+        });
+    });
+</script>
 </body>
 </html>

@@ -1376,7 +1376,7 @@ def admin_login(request):
         # Use Django's built-in authentication system
         user = authenticate(request, username=username, password=password)
         if user is not None and user.is_staff:
-            login(request, user)
+            auth_login(request, user)
             return redirect('dashboard')
         else:
             messages.error(request, "Invalid credentials or not an admin user!")
@@ -1409,6 +1409,13 @@ import os
 import json
 
 def preds(request):
+    if request.method == 'POST':
+        uploaded_file = request.FILES.get('file')
+        if uploaded_file:
+            df = pd.read_csv(uploaded_file)
+            data = df.to_dict(orient='records')
+            headers = df.columns.tolist()
+            return render(request, 'main/preds.html', {'data': data, 'headers': headers})
     return render(request, 'main/preds.html')  
 
 import os
@@ -1438,6 +1445,7 @@ def save_csv(request):
 # -----------------------------------------------------------------------------------
 
 # ------------- the better looking neo4j visualizer -------------------------------
+
 import logging
 import json
 from django.shortcuts import render
@@ -1542,118 +1550,124 @@ def save_visualization(request):
     return JsonResponse({'status': 'error'}, status=400)
 
 
-
 # -------------------- Implementing Machine Learning for Instagram ---------------------------------
-
+from django.views.decorators.csrf import csrf_exempt
+from neo4j import GraphDatabase
+import networkx as nx
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+import xgboost as xgb
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GridSearchCV
-from datetime import datetime
-
-from sklearn.ensemble import GradientBoostingRegressor
+import pandas as pd
+import numpy as np
+import datetime
 
 def predict_engagement(request):
+    data_path = "C:/Users/Welcome/Downloads/graph/SNAP/projectfolder/main/josh_edit2.csv"
+    if not os.path.exists(data_path):
+        return JsonResponse({"status": "error", "message": "Data file not found."}, status=500)
+
+    df = pd.read_csv(data_path)
+
+    # Preprocess the data
+    df_encoded = pd.get_dummies(df, columns=['Day of Upload'])
+    features = ['Day', 'Month', 'Year', 'Hour', 'Is Video'] + \
+              [col for col in df_encoded.columns if col.startswith('Day of Upload_')]
+    X = df_encoded[features]
+    y_likes = df['Likes']
+    y_comments = df['Comments']
+    y_log_likes = np.log1p(y_likes)
+    y_log_comments = np.log1p(y_comments)
+    X_train, X_test, y_log_likes_train, y_log_likes_test, y_log_comments_train, y_log_comments_test = \
+        train_test_split(X, y_log_likes, y_log_comments, test_size=0.2, random_state=42)
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    xgb_likes = xgb.XGBRegressor(random_state=42)
+    xgb_comments = xgb.XGBRegressor(random_state=42)
+    param_grid = {
+        'n_estimators': [100, 200],
+        'max_depth': [3, 5],
+        'learning_rate': [0.01, 0.1]
+    }
+    grid_search_likes = GridSearchCV(
+        estimator=xgb_likes,
+        param_grid=param_grid,
+        cv=5,
+        scoring='r2',
+        n_jobs=-1
+    )
+    grid_search_likes.fit(X_train_scaled, y_log_likes_train)
+    xgb_comments.set_params(**grid_search_likes.best_params_)
+    xgb_comments.fit(X_train_scaled, y_log_comments_train)
+
+    likes_r2 = r2_score(y_log_likes_test, grid_search_likes.predict(X_test_scaled))
+    comments_r2 = r2_score(y_log_comments_test, xgb_comments.predict(X_test_scaled))
+
+    likes_mae = mean_absolute_error(y_log_likes_test, grid_search_likes.predict(X_test_scaled))
+    comments_mae = mean_absolute_error(y_log_comments_test, xgb_comments.predict(X_test_scaled))
+
+    likes_mse = mean_squared_error(y_log_likes_test, grid_search_likes.predict(X_test_scaled))
+    comments_mse = mean_squared_error(y_log_comments_test, xgb_comments.predict(X_test_scaled))
+
+    def get_recent_10_posts():
+        return df.head(10)
+
     if request.method == 'POST':
-        # Load the data
-        df = pd.read_csv('C:/Users/Welcome/Desktop/Predictest/my-django-app/josh_edit.csv')
+        date = request.POST.get('date')
+        hour = int(request.POST.get('hour'))
+        post_type = request.POST.get('post_type')
 
-        # Preprocess the data
-        df['Is Video'] = df['Is Video'].fillna(False).astype(int)  # Fill NaN and convert boolean to int
-        df.dropna(subset=['Likes', 'Comments'], inplace=True)  # Drop rows with missing target values
+        date_obj = datetime.datetime.strptime(date, '%Y-%m-%d')
+        day = date_obj.day
+        month = date_obj.month
+        year = date_obj.year
+        day_of_week = date_obj.strftime('%A')
 
-        # Handle NaN values in features
-        df.fillna({
-            'Day': 0,
-            'Month': 0,
-            'Year': 0,
-            'Hour': 0,
-            'Video Duration': 0
-        }, inplace=True)
+        is_video = 1 if 'Video' in post_type else 0
 
-        # Extract date and hour from the request
-        selected_date = request.POST.get('date')
-        selected_hour = request.POST.get('hour')
-
-        if not selected_date or selected_hour is None:
-            return render(request, 'main/ml_predictions.html', {'error': 'Please provide both date and hour.'})
-
-        selected_hour = int(selected_hour)
-
-        # Convert selected date to day of the week
-        date_object = datetime.strptime(selected_date, '%Y-%m-%d')
-        day_of_week = date_object.day  # Extract the day from the date
-
-        # Features and target variables
-        X = df[['Day', 'Month', 'Year', 'Hour', 'Is Video', 'Video Duration']]
-        y_likes = df['Likes']
-        y_comments = df['Comments']
-
-        # Normalize the features
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-
-        # Split the data
-        X_train, X_test, y_train_likes, y_test_likes = train_test_split(X_scaled, y_likes, test_size=0.2, random_state=42)
-        _, _, y_train_comments, y_test_comments = train_test_split(X_scaled, y_comments, test_size=0.2, random_state=42)
-
-        # Hyperparameter tuning for Likes using Gradient Boosting Regressor
-        param_grid_likes = {
-            'n_estimators': [100, 200, 300],
-            'learning_rate': [0.01, 0.1, 0.2],
-            'max_depth': [3, 5, 7]
-        }
-        model_likes = GridSearchCV(GradientBoostingRegressor(random_state=42), param_grid_likes, cv=5)
-        model_likes.fit(X_train, y_train_likes)
-
-        # Hyperparameter tuning for Comments using Gradient Boosting Regressor
-        param_grid_comments = {
-            'n_estimators': [100, 200, 300],
-            'learning_rate': [0.01, 0.1, 0.2],
-            'max_depth': [3, 5, 7]
-        }
-        
-        model_comments = GridSearchCV(GradientBoostingRegressor(random_state=42), param_grid_comments, cv=5)
-        model_comments.fit(X_train, y_train_comments)
-
-        # Make predictions
-        predictions_likes = model_likes.predict(X_test)
-        predictions_comments = model_comments.predict(X_test)
-
-        # Calculate accuracy (mean squared error)
-        mse_likes = mean_squared_error(y_test_likes, predictions_likes)
-        mse_comments = mean_squared_error(y_test_comments, predictions_comments)
-
-        # Prepare results for rendering
-        results = {
-            'videos_with_hashtags': {
-                'predicted_likes': predictions_likes.tolist(),
-                'predicted_comments': predictions_comments.tolist(),
-                'mse_likes': mse_likes,
-                'mse_comments': mse_comments
-            },
-            'images_with_hashtags': {
-                'predicted_likes': predictions_likes.tolist(),
-                'predicted_comments': predictions_comments.tolist(),
-                'mse_likes': mse_likes,
-                'mse_comments': mse_comments
-            },
-            'videos_without_hashtags': {
-                'predicted_likes': predictions_likes.tolist(),
-                'predicted_comments': predictions_comments.tolist(),
-                'mse_likes': mse_likes,
-                'mse_comments': mse_comments
-            },
-            'images_without_hashtags': {
-                'predicted_likes': predictions_likes.tolist(),
-                'predicted_comments': predictions_comments.tolist(),
-                'mse_likes': mse_likes,
-                'mse_comments': mse_comments
-            }
+        input_data = {
+            'Day': [day],
+            'Month': [month],
+            'Year': [year],
+            'Hour': [hour],
+            'Is Video': [is_video]
         }
 
-        # Create a list of hours for the template
-        hours = list(range(24))
+        for col in df_encoded.columns:
+            if col.startswith('Day of Upload_'):
+                input_data[col] = [1 if col == f'Day of Upload_{day_of_week}' else 0]
 
-        return render(request, 'main/ml_predictions.html', {'results': results, 'hours': hours})
+        input_df = pd.DataFrame(input_data)
+        input_scaled = scaler.transform(input_df)
 
-    # If GET request, render the form
-    return render(request, 'main/ml_predictions.html')
+        likes_pred = np.expm1(grid_search_likes.predict(input_scaled)).astype(float)
+        comments_pred = np.expm1(xgb_comments.predict(input_scaled)).astype(float)
+
+        return JsonResponse({'likes_pred': likes_pred[0], 'comments_pred': comments_pred[0]})
+
+    last_10_posts = get_recent_10_posts().to_html()
+
+    context = {
+        'df_preview': df.head().to_html(),
+        'likes_r2': likes_r2,
+        'comments_r2': comments_r2,
+        'likes_mae': likes_mae,
+        'comments_mae': comments_mae,
+        'likes_mse': likes_mse,
+        'comments_mse': comments_mse,
+        'results_df': pd.DataFrame({
+            'Actual Likes': np.expm1(y_log_likes_test),
+            'Predicted Likes': np.expm1(grid_search_likes.predict(X_test_scaled)),
+            'Actual Comments': np.expm1(y_log_comments_test),
+            'Predicted Comments': np.expm1(xgb_comments.predict(X_test_scaled))
+        }).head().to_html(),
+        'feature_importance': pd.DataFrame({
+            'feature': features,
+            'importance': grid_search_likes.best_estimator_.feature_importances_
+        }).sort_values('importance', ascending=False).head().to_html(),
+        'last_10_posts': last_10_posts
+    }
+
+    return render(request, 'main/ml_predictions.html', context)
