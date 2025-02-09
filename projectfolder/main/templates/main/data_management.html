@@ -132,45 +132,32 @@
     
 </head>
 <body>
-
-
-    <div class="sidebar">
-        <h2>Dashboard</h2>
-        <a href="{% url 'view_profile' %}" class="menu-item">My Profile</a>
-        <a href="{% url 'upload_csv_or_xlsx' %}" class="menu-item">Upload File</a>
-        <a href="{% url 'download_csv' %}" class="menu-item">Download CSV</a>
-        <a href="{% url 'view_businessman_accounts' %}" class="menu-item">View User Accounts</a>
-        <a href="{% url 'create_businessman_account' %}" class="menu-item">Create Account</a>
-        <a href="{% url 'admin_logout' %}" class="menu-item">Logout</a>
-    </div>
-
-
     <div class="main-content">
-    <div class="data-management-container">
-        <h1>Data Management</h1>
+        <div class="data-management-container">
+            <h1>Data Management</h1>
 
-        <!-- Button for auto preprocessing -->
-        <form method="POST" action="{% url 'auto_preprocess' %}">
-            {% csrf_token %}
-            <button type="submit">Auto Pre-Process</button>
-        </form>
+            <!-- Button for auto preprocessing -->
+            <form method="POST" action="{% url 'auto_preprocess' %}">
+                {% csrf_token %}
+                <button type="submit">Auto Pre-Process</button>
+            </form>
 
-        <!-- Display success or error messages -->
-        {% if messages %}
-            <div>
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
+            <!-- Display success or error messages -->
+            {% if messages %}
+                <div>
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-        <!-- Button for manual preprocessing -->
-        <a href="{% url 'download_csv' %}">
-            <button class="btn-secondary">Download CSV</button>
-        </a>
+            <!-- Button for manual preprocessing -->
+            <a href="{% url 'download_csv' %}">
+                <button class="btn-secondary">Download CSV</button>
+            </a>
+        </div>
     </div>
-</div>
 </body>
 </html>

@@ -237,75 +237,57 @@
     
 </style>
 <body>
-    <div class="main-container">
-        <!-- Sidebar -->
-        <div class="sidebar-menu">
-            <h2>Admin Actions</h2>
-            <a href="{% url 'create_user_account' %}" class="sidebar-menu-item selected">
-                <span>Users</span>
-            </a>
-            <a href="{% url 'create_category' %}" class="sidebar-menu-item">
-                <span>Categories</span>
-            </a>
-            <h3>Options</h3>
-            <a href="{% url 'dashboard' %}" class="sidebar-menu-item">
-                <span>Dashboard</span>
-            </a>
-        </div>
-
-        <!-- Content -->
-        <div class="content-container">
-            <div class="header">
-                <h2>Users</h2>
-                <div class="action-bar">
-                    <button class="button">
-                        <a href="{% url 'create_user_account' %}">Add User</a>
-                    </button>
-                    <select class="filter-dropdown">
-                        <option>All</option>
-                        <option>Content Creator</option>
-                        <option>Business</option>
-                        <option>Analyst</option>
-                    </select>
-                    <input type="text" class="search-box" placeholder="Search User" />
-                </div>
+    <div class="content-container">
+        <div class="header">
+            <h2>Users</h2>
+            <div class="action-bar">
+                <button class="button">
+                    <a href="{% url 'create_user_account' %}">Add User</a>
+                </button>
+                <select class="filter-dropdown">
+                    <option>All</option>
+                    <option>Content Creator</option>
+                    <option>Business</option>
+                    <option>Analyst</option>
+                </select>
+                <input type="text" class="search-box" placeholder="Search User" />
             </div>
-
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th>No</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    
-                    {% for user in users %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ user.username }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.get_role_display }}</td>
-                            <td>
-                                <button class="edit-btn"
-                                data-id="{{ user.id }}"
-                                data-username="{{ user.username }}"
-                                data-email="{{ user.email }}"
-                                data-role="{{ user.role }}">Edit</button>
-                                
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5">No users found.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
+
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                {% for user in users %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.get_role_display }}</td>
+                        <td>
+                            <button class="edit-btn"
+                            data-id="{{ user.id }}"
+                            data-username="{{ user.username }}"
+                            data-email="{{ user.email }}"
+                            data-role="{{ user.role }}">Edit</button>
+                            
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No users found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
 

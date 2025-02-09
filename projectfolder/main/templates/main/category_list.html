@@ -138,63 +138,45 @@
         }
     </style>
 
-    <div class="main-container">
-        <!-- Sidebar -->
-        <div class="sidebar-menu">
-            <h2 class="sidebar-title">Admin Actions</h2>
-            <a href="{% url 'create_user_account' %}" class="sidebar-menu-item">
-                <span>Users</span>
-            </a>
-            <a href="{% url 'create_category' %}" class="sidebar-menu-item selected">
-                <span>Categories</span>
-            </a>
-            <h3 class="sidebar-subtitle">Options</h3>
-            <a href="{% url 'dashboard' %}" class="sidebar-menu-item">
-                <span>Dashboard</span>
-            </a>
-        </div>
-
-        <!-- Content -->
-        <div class="content-container">
-            <div class="header">
-                <h2 class="page-title">Categories</h2>
-                <div class="action-bar">
-                    <a href="{% url 'create_category' %}" class="button">Add Category</a>
-                    <select id="filter-dropdown" class="filter-dropdown">
-                        <option value="all">All</option>
-                        <option value="content_creator">Content Creator</option>
-                        <option value="business">Business</option>
-                        <option value="analyst">Analyst</option>
-                    </select>
-                    <input type="text" id="search-box" class="search-box" placeholder="Search Category" />
-                </div>
+    <div class="content-container">
+        <div class="header">
+            <h2 class="page-title">Categories</h2>
+            <div class="action-bar">
+                <a href="{% url 'create_category' %}" class="button">Add Category</a>
+                <select id="filter-dropdown" class="filter-dropdown">
+                    <option value="all">All</option>
+                    <option value="content_creator">Content Creator</option>
+                    <option value="business">Business</option>
+                    <option value="analyst">Analyst</option>
+                </select>
+                <input type="text" id="search-box" class="search-box" placeholder="Search Category" />
             </div>
-
-            <table class="category-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Content</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="category-table-body">
-                    {% for category in categories %}
-                        <tr id="category-{{ category.id }}" data-category-type="{{ category.type }}">
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ category.name }}</td>
-                            <td>{{ category.description }}</td>
-                            <td><button class="edit-btn" data-id="{{ category.id }}" data-name="{{ category.name }}" data-description="{{ category.description }}">Update</button></td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="4">No categories found.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
+
+        <table class="category-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Content</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="category-table-body">
+                {% for category in categories %}
+                    <tr id="category-{{ category.id }}" data-category-type="{{ category.type }}">
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ category.name }}</td>
+                        <td>{{ category.description }}</td>
+                        <td><button class="edit-btn" data-id="{{ category.id }}" data-name="{{ category.name }}" data-description="{{ category.description }}">Update</button></td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4">No categories found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <div id="edit-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #f9f9f9; padding: 20px; border: 1px solid #ccc; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">

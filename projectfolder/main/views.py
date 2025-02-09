@@ -166,29 +166,18 @@ def login(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         
-        # Use Django's built-in authentication system
-        try:
-            user = User.objects.get(username=username)
+        user = authenticate(username=username, password=password)
+        if user is not None:
             try:
-                user_account = UserAccount.objects.filter(user=user).first()
-                if not user_account:
-                    messages.error(request, "User account does not exist!")
-                    return redirect('login')
-            except UserAccount.DoesNotExist:
-                messages.error(request, "User account does not exist!")
-                return redirect('login')
-            
-            if user.check_password(password):  # Use Django's built-in password check
-                # Set session for login
+                user_account = UserAccount.objects.get(user=user)
+                auth_login(request, user)  # Log the user in
+                
+                # Set session data
                 request.session['username'] = user.username
                 request.session['role'] = user_account.role
                 request.session['is_authenticated'] = True
 
-                # Debug statements
-                print(f"User {username} authenticated successfully.")
-                print(f"Role: {user_account.role}")
-
-                # Redirect to respective dashboards based on role
+                # Redirect based on role
                 if user_account.role == 'admin':
                     return redirect('dashboard')
                 elif user_account.role == 'businessman':
@@ -197,17 +186,12 @@ def login(request):
                     return redirect('content_creator_dashboard')
                 elif user_account.role == 'data_analyst':
                     return redirect('data_analyst_dashboard')
-                else:
-                    messages.error(request, "Invalid role!")
-                    print("Invalid role!")
-                    return redirect('login')
-            else:
-                messages.error(request, "Invalid credentials!")
-                print("Invalid credentials!")
-        except User.DoesNotExist:
-            messages.error(request, "Account does not exist!")
-            print("Account does not exist!")
-
+                
+            except UserAccount.DoesNotExist:
+                messages.error(request, "User account not found!")
+        else:
+            messages.error(request, "Invalid username or password!")
+    
     return render(request, 'main/login.html')
 
 def logout(request):
@@ -281,18 +265,33 @@ def get_timezone_from_ip(ip):
     return "Unknown"
 
 def create_profile(request):
+    # Get the new user's ID from session
+    new_user_id = request.session.get('new_user_id')
+    if not new_user_id:
+        messages.error(request, 'Please create an account first')
+        return redirect('create_user_account')
+
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES)
         if form.is_valid():
-            # Save the form data to create a new profile instance
-            form.save()
-            # Redirect to the login page after profile creation
-            messages.success(request, 'Profile created successfully! Please log in.')
-            return redirect('login')
+            profile = form.save(commit=False)
+            try:
+                user = User.objects.get(id=new_user_id)
+                user_account = UserAccount.objects.get(user=user)
+                profile.user_account = user_account
+                profile.save()
+                
+                # Clear the session
+                del request.session['new_user_id']
+                
+                messages.success(request, 'Profile created successfully! Please log in.')
+                return redirect('login')
+            except (User.DoesNotExist, UserAccount.DoesNotExist):
+                messages.error(request, 'Error linking profile to user account')
+                return redirect('create_user_account')
     else:
         form = ProfileForm()
         
-    # Render the template with the form
     return render(request, 'main/create_profile.html', {'form': form})
 
 def get_client_ip(request):
@@ -310,21 +309,24 @@ def create_user_account(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password1')
-            email = form.cleaned_data.get('email')
-            role = request.POST.get('role')
             try:
-                user = User.objects.create_user(username=username, password=password, email=email)
-                UserAccount.objects.create(user=user, username=username, role=role, email=email)
-                messages.success(request, 'Account created successfully.')
-                return redirect('login')
+                user = form.save()  # This will create both User and UserAccount
+                
+                # Store user_id in session for profile creation
+                request.session['new_user_id'] = user.id
+                messages.success(request, 'Account created successfully! Please complete your profile.')
+                return redirect('create_profile')
+            
             except Exception as e:
-                messages.error(request, f'Error creating account: {e}')
+                messages.error(request, f'Error creating account: {str(e)}')
+                if 'user' in locals():
+                    user.delete()
         else:
-            messages.error(request, 'Invalid form submission.')
+            for error in form.errors.values():
+                messages.error(request, error)
     else:
         form = UserCreationForm()
+    
     return render(request, 'main/create_user_account.html', {'form': form})
 
 def create_businessman_account(request):
@@ -388,10 +390,27 @@ def create_data_analyst_account(request):
 
 # View user profile
 def view_profile(request):
-    user_profile = Profile.objects.all()
-    return render(request, 'main/myprofile.html', {'user_profile': user_profile})
+    # Get the logged-in user's username from session
+    username = request.session.get('username')
+    if not username:
+        messages.error(request, 'Please log in first')
+        return redirect('login')
 
-# View to list all user accounts
+    try:
+        # Get the UserAccount
+        user_account = UserAccount.objects.get(username=username)
+        # Get the associated profile
+        user_profile = Profile.objects.filter(user_account=user_account)
+        
+        if not user_profile.exists():
+            messages.warning(request, 'Profile not found. Please create your profile.')
+            return redirect('create_profile')
+            
+        return render(request, 'main/myprofile.html', {'user_profile': user_profile})
+    except UserAccount.DoesNotExist:
+        messages.error(request, 'Account not found')
+        return redirect('login')
+
 def view_user_accounts(request):
     users = UserAccount.objects.all()
     return render(request, 'main/view_user_accounts.html', {'users': users})
@@ -1329,21 +1348,29 @@ def login_rate(request):
     return render(request, 'main/rate_to_login.html')
 
 def manage_visibility(request):
-    is_authenticated = request.session.get('is_authenticated', False)
-
-    if not is_authenticated:
+    username = request.session.get('username')
+    if not username:
         return redirect('login')
 
-    username = request.session.get('username')
-    user_account = UserAccount.objects.get(username=username)
-
-    # Query DataItem using UserAccount
-    data_items = DataItem.objects.filter(businessman=user_account)
-    
-    print(f"User Account: {user_account}")
-    print(f"Data Items: {data_items}")
-
-    return render(request, 'main/manage_visibility.html', {'data_items': data_items})
+    try:
+        user_account = UserAccount.objects.get(username=username)
+        # Create a default DataItem if none exists
+        if not DataItem.objects.filter(businessman=user_account).exists():
+            DataItem.objects.create(
+                businessman=user_account,
+                name=f"{username}'s Data",
+                description="Default data item",
+                visibility='private'
+            )
+        
+        data_items = DataItem.objects.filter(businessman=user_account)
+        return render(request, 'main/manage_visibility.html', {
+            'data_items': data_items,
+            'user_account': user_account
+        })
+    except UserAccount.DoesNotExist:
+        messages.error(request, 'Account not found')
+        return redirect('login')
 
 def update_visibility(request, data_item_id):
     username = request.session.get('username')

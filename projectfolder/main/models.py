@@ -37,38 +37,14 @@ class Category(models.Model):
         return f"{self.name}"
 
 class UserAccount(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
-    username = models.CharField(max_length=150, unique=True)  # Add username field
-    role = models.CharField(max_length=255)
-    email = models.EmailField()
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    username = models.CharField(max_length=150, unique=True)
+    role = models.CharField(max_length=255, default='businessman')
+    email = models.EmailField(null=True, blank=True)  # Make email optional
+    password = models.CharField(max_length=128)  # Remove default value
 
     def __str__(self):
-        return f"{self.user.username} - {self.role}"
-
-@receiver(post_save, sender=User)
-def create_user_account(sender, instance, created, **kwargs):
-    if created:
-        try:
-            if not UserAccount.objects.filter(user=instance).exists():
-                UserAccount.objects.create(user=instance, username=instance.username)
-                logger.info(f"UserAccount created for user: {instance.username}")
-            else:
-                logger.warning(f"UserAccount already exists for user: {instance.username}")
-        except Exception as e:
-            logger.error(f"Error creating UserAccount for user: {instance.username} - {e}")
-            logger.error(traceback.format_exc())
-
-@receiver(post_save, sender=User)
-def save_user_account(sender, instance, **kwargs):
-    try:
-        if hasattr(instance, 'useraccount'):
-            instance.useraccount.save()
-            logger.info(f"UserAccount saved for user: {instance.username}")
-        else:
-            logger.warning(f"UserAccount does not exist for user: {instance.username}")
-    except Exception as e:
-        logger.error(f"Error saving UserAccount for user: {instance.username} - {e}")
-        logger.error(traceback.format_exc())
+        return f"{self.username} - {self.role}"
 
 class Businessman(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)  # Ensure default value
@@ -108,6 +84,7 @@ class Data(models.Model):
 
 class Profile(models.Model):
     profile_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    user_account = models.OneToOneField(UserAccount, on_delete=models.CASCADE, null=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     company = models.CharField(max_length=100)

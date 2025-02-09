@@ -85,8 +85,6 @@ urlpatterns = [
     path('graph_view/', views.graph_view, name='graph_view'),
     path('save-visualization/', views.save_visualization, name='save_visualization'),
     path('upload-csv/', views.upload_csv, name='upload_csv'),  # Handles CSV uploads
-    
-
 
     # To view the Machine Learning Algo of Social Media
     path('predict_engagement/', views.predict_engagement, name='predict_engagement'),
