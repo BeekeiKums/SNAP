@@ -177,16 +177,6 @@
 
     <h1>Manual Data Processing</h1>
 
-    <div class="sidebar">
-        <h2>Dashboard</h2>
-        <a href="{% url 'view_profile' %}" class="menu-item">My Profile</a>
-        <a href="{% url 'upload_csv_or_xlsx' %}" class="menu-item">Upload File</a>
-        <a href="{% url 'download_csv' %}" class="menu-item">Download CSV</a>
-        <a href="{% url 'view_businessman_accounts' %}" class="menu-item">View User Accounts</a>
-        <a href="{% url 'create_businessman_account' %}" class="menu-item">Create Account</a>
-        <a href="{% url 'admin_logout' %}" class="menu-item">Logout</a>
-    </div>
-
     <!-- Pagination Controls -->
     <div class="pagination">
         {% if current_page > 1 %}
