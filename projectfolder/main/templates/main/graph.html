@@ -40,7 +40,7 @@
         </select>
         <br><br>
         <label for="search">Search for a Hashtag:</label>
-        <input type="text" id="search" placeholder="Enter hashtag" oninput="searchHashtag()">
+        <input type="text" id="search" placeholder="Enter hashtag" oninput="debouncedSearchHashtag()">
         <br><br>
         <button onclick="saveVisualization()">Save Visualization</button>
     </div>
@@ -81,6 +81,11 @@
         var nodes = JSON.parse('{{ nodes|escapejs }}');
         var edges = JSON.parse('{{ edges|escapejs }}');
 
+        // Function to format floating-point numbers to the desired convention
+        function formatNumber(num) {
+            return num.toFixed(16);
+        }
+
         // Determine the node with the highest degree centrality
         var maxDegreeNode = nodes.reduce((maxNode, node) => {
             return node.degree > (maxNode.degree || 0) ? node : maxNode;
@@ -92,7 +97,7 @@
             return { 
                 id: node.id, 
                 label: node.label, 
-                title: 'Betweenness: ' + node.betweenness + '<br>Eigenvector: ' + node.eigenvector + '<br>Degree: ' + node.degree + '<br>Closeness: ' + node.closeness,
+                title: 'Betweenness: ' + formatNumber(node.betweenness) + '\nEigenvector: ' + formatNumber(node.eigenvector) + '\nDegree: ' + formatNumber(node.degree) + '\nCloseness: ' + formatNumber(node.closeness),
                 color: {
                     border: color,
                     background: color
@@ -135,6 +140,9 @@
             },
             physics: {
                 enabled: true
+            },
+            layout: {
+                improvedLayout: false  // Disable improved layout for better performance
             }
         };
         var network = new vis.Network(container, data, options);
@@ -278,6 +286,17 @@
                 });
             });
         }
+
+        // Debounce function to improve performance
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        const debouncedSearchHashtag = debounce(searchHashtag, 300);
     </script>
 </body>
 </html>

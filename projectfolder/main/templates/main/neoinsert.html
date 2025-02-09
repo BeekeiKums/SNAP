@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Insert CSV to Neo4j</title>
+</head>
+<body>
+    <h2>Upload CSV File</h2>
+    <form id="upload-form" enctype="multipart/form-data" method="post" action="{% url 'upload_csv' %}">
+        {% csrf_token %}
+        <input type="file" name="csv_file" accept=".csv" required>
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>
