@@ -84,11 +84,7 @@ urlpatterns = [
     # To view the correct neo4j graph
     path('graph_view/', views.graph_view, name='graph_view'),
     path('save-visualization/', views.save_visualization, name='save_visualization'),
-    path('upload_and_view_charts/', views.upload_and_view_charts, name='upload_and_view_charts'),  # Add the new URL pattern
     
-    
-
-
     # To view the Machine Learning Algo of Social Media
     path('predict_engagement/', views.predict_engagement, name='predict_engagement'),
 

@@ -7,8 +7,46 @@
     <title>Create User Account</title>
     <link rel="stylesheet" href="{% static 'style.css' %}">
     <style>
+        .create-account-container {
+            width: 600px;  /* Increased from default */
+            max-width: 90%;  /* Responsive width */
+            margin: 50px auto;
+            padding: 40px;  /* Increased padding */
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            width: 100%;
+        }
+
         .input-wrapper input, .input-wrapper select {
             width: 100%; /* Adjust the width of the input box */
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;  /* Center horizontally */
+            align-items: center;      /* Center vertically */
+            margin: 20px 0;
+        }
+
+        .button {
+            background-color: #636ae8;
+            color: #ffffff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            width: 200px;             /* Fixed width for the button */
+            text-align: center;       /* Center the text inside button */
+        }
+
+        .button:hover {
+            background-color: #4b56e8;
         }
     </style>
 </head>
@@ -39,16 +77,6 @@
                     {% endif %}
                 </div>
             {% endfor %}
-            <div class="textbox">
-                <label class="label" for="role">Role</label>
-                <div class="input-wrapper">
-                    <select id="role" name="role" required>
-                        <option value="businessman">Businessman</option>
-                        <option value="data_analyst">Data Analyst</option>
-                        <option value="content_creator">Content Creator</option>
-                    </select>
-                </div>
-            </div>
             <div class="button-container">
                 <button class="button" type="submit">Create Account</button>
             </div>
