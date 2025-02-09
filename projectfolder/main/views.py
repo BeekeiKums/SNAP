@@ -1472,23 +1472,62 @@ def save_csv(request):
 # -----------------------------------------------------------------------------------
 
 # ------------- the better looking neo4j visualizer -------------------------------
-
-import logging
-import json
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from io import TextIOWrapper
+import csv
+import ast
 from neo4j import GraphDatabase
-import networkx as nx
 
 # Neo4j connection details
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "graphbeek"
+NEO4J_PASSWORD = "graphspurs"
+
+@csrf_exempt
+def upload_csv(request):
+    if request.method == 'POST' and request.FILES.get('csv_file'):
+        csv_file = request.FILES['csv_file']
+        file_wrapper = TextIOWrapper(csv_file.file, encoding='utf-8')
+        csv_reader = csv.reader(file_wrapper)
+        header = next(csv_reader)  # Read the header
+        
+        # Process the CSV file as needed
+        store_csv_to_neo4j(csv_reader)  # Ensure the CSV is stored in Neo4j
+        return redirect('graph_view')  # Redirect to graph_view after successful upload
+    return render(request, 'main/neoinsert.html')  # Render the form for GET requests
+
+def store_csv_to_neo4j(csv_reader):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    
+    with driver.session() as session:
+        for row in csv_reader:
+            try:
+                hashtags = ast.literal_eval(row[9])  # Assuming the hashtags are in the 10th column (index 9)
+                if not isinstance(hashtags, list):
+                    raise ValueError("Hashtags column is not a list")
+            except (ValueError, SyntaxError, IndexError) as e:
+                print(f"Error processing row {row}: {e}")
+                hashtags = []  # Handle empty or invalid hashtags column
+            
+            print(f"Processed hashtags: {hashtags}")
+            
+            for i in range(len(hashtags)):
+                for j in range(i + 1, len(hashtags)):
+                    hashtag1, hashtag2 = hashtags[i], hashtags[j]
+                    print(f"Creating relationship between {hashtag1} and {hashtag2}")
+                    session.run(
+                        "MERGE (h1:Hashtag {name: $hashtag1}) "
+                        "MERGE (h2:Hashtag {name: $hashtag2}) "
+                        "MERGE (h1)-[:CO_OCCURS_WITH]->(h2)",
+                        hashtag1=hashtag1, hashtag2=hashtag2
+                    )
 
 def graph_view(request):
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-
+    
     with driver.session() as session:
-        # Fetch nodes and edges together
         result = session.run("MATCH p=()-[r:CO_OCCURS_WITH]->() RETURN p")
         
         nodes = []
@@ -1502,51 +1541,40 @@ def graph_view(request):
                     node_ids.add(node.id)
             for rel in record["p"].relationships:
                 edges.append({"from": rel.start_node.id, "to": rel.end_node.id})
-
-    # Create a NetworkX graph from the nodes and edges for centrality calculations
+    
+    if not nodes:
+        return JsonResponse({'error': 'Graph is empty. Upload data first.'}, status=400)
+    
     G = nx.Graph()
     for node in nodes:
         G.add_node(node['id'])
     for edge in edges:
         G.add_edge(edge['from'], edge['to'])
-
-    # Calculate centrality measures
+    
     betweenness = nx.betweenness_centrality(G)
+    degree = nx.degree_centrality(G)
+    closeness = nx.closeness_centrality(G)
     try:
         eigenvector = nx.eigenvector_centrality(G, max_iter=1000)
     except nx.PowerIterationFailedConvergence:
         eigenvector = {node: 0 for node in G.nodes}
-    degree = nx.degree_centrality(G)
-    closeness = nx.closeness_centrality(G)
-
-    # Update nodes with centrality measures
+    
     for node in nodes:
         node['betweenness'] = betweenness[node['id']]
         node['eigenvector'] = eigenvector[node['id']]
         node['degree'] = degree[node['id']]
         node['closeness'] = closeness[node['id']]
-
-    # Ensure all nodes referenced in edges are included in the nodes array
-    for edge in edges:
-        if edge['from'] not in node_ids:
-            nodes.append({"id": edge['from'], "label": str(edge['from']), "betweenness": 0, "eigenvector": 0, "degree": 0, "closeness": 0})
-            node_ids.add(edge['from'])
-        if edge['to'] not in node_ids:
-            nodes.append({"id": edge['to'], "label": str(edge['to']), "betweenness": 0, "eigenvector": 0, "degree": 0, "closeness": 0})
-            node_ids.add(edge['to'])
-
-    # Sort nodes by betweenness centrality and get top 10
+    
     top_10_nodes = sorted(nodes, key=lambda x: x['betweenness'], reverse=True)[:10]
-
+    
     context = {
-        "nodes": json.dumps(nodes),  # Serialize nodes to JSON
-        "edges": json.dumps(edges),  # Serialize edges to JSON
+        "nodes": json.dumps(nodes),
+        "edges": json.dumps(edges),
         "centrality_results": top_10_nodes
     }
-
-    #print(context)  # Debug statement to print the context
-
+    
     return render(request, 'main/graph.html', context)
+
 
 import os
 from django.http import JsonResponse
@@ -1555,26 +1583,21 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
 
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
 @csrf_exempt
 def save_visualization(request):
-    if request.method == 'POST' and request.FILES.get('image'):
-        image = request.FILES['image']
-        diag_dir = os.path.join('diag')
-        if not os.path.exists(diag_dir):
-            os.makedirs(diag_dir)
-        
-        # Determine the next available filename
-        existing_files = os.listdir(diag_dir)
-        next_number = len(existing_files) + 1
-        filename = f'vis{next_number}.png'
-        filepath = os.path.join(diag_dir, filename)
-        
-        with default_storage.open(filepath, 'wb+') as destination:
-            for chunk in image.chunks():
-                destination.write(chunk)
-        
-        return JsonResponse({'status': 'success', 'filename': filename})
-    return JsonResponse({'status': 'error'}, status=400)
+    if request.method == 'POST':
+        image = request.FILES.get('image')
+        if image:
+            with open('visualization.png', 'wb') as f:
+                for chunk in image.chunks():
+                    f.write(chunk)
+            return JsonResponse({'status': 'success', 'message': 'Visualization saved successfully!'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'No image provided.'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 
 # -------------------- Implementing Machine Learning for Instagram ---------------------------------

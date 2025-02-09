@@ -24,6 +24,8 @@ urlpatterns = [
     path('login/', views.login, name='login'),  # Ensure this points to the correct login view
     path('preds/', views.preds, name='preds'),
     path('predict_engagement/', views.predict_engagement, name='predict_engagement'),
+    path('upload-csv/', views.upload_csv, name='upload_csv'),  # Handles CSV uploads
+    path('graph_view/', views.graph_view, name='graph_view'),  # Ensure graph_view is defined
 ]
 
 from django.conf import settings
