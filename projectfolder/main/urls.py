@@ -87,7 +87,7 @@ urlpatterns = [
     path('upload-csv/', views.upload_csv, name='upload_csv'),  # Handles CSV uploads
 
     # To view the Machine Learning Algo of Social Media
-    path('predict_engagement/', views.predict_engagement, name='predict_engagement'),
+    path('predict-engagement/', views.predict_engagement, name='predict_engagement'),
 
     # Admin login
     path('admin_login/', views.admin_login, name='admin_login'),
